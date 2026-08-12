@@ -1,0 +1,35 @@
+{
+  "name": "@checkup/parser",
+  "version": "0.1.0",
+  "description": "Fault-tolerant parser for CheckUp .cup Format v2",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:web": "npm run build --prefix apps/web-editor",
+    "dev:web": "npm run build && npm run dev --prefix apps/web-editor",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:web": "npm run typecheck --prefix apps/web-editor",
+    "test": "vitest run tests"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

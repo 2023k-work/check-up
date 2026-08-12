@@ -1,0 +1,7 @@
+這是註解
+@version(2)
+| $month(月份)
+
+@repeat(month)
+@help(逐欄確認,images/help.png)
+| $day(日) | $text(A\|B)

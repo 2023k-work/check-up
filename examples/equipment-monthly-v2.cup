@@ -1,0 +1,23 @@
+這是 CheckUp 純文字來源檔；一般文字只供編輯者閱讀，不會渲染。
+範例刻意包含逗號、括號、直線與反斜線的合法 escape。
+
+@version(2)
+@title(空壓機月度巡檢表)
+@info(每日開機前完成巡檢，異常時通知設備主管。)
+
+| $month(巡檢月份) | $text(設備編號)
+| $date(填表日期) | $text(巡檢人員)
+
+@repeat(month)
+以下註解不會中斷 repeat；repeat 仍只套用到下一個表格。
+| $day(日) | $time(時間)
+| $number(壓力\, MPa) | $check(壓力正常)
+| $check(外觀正常) | $check(封條完整)
+| $text(備註 A\|B)
+
+@help(請確認壓力表指針位於綠色區域\(正常範圍\),assets/pressure-guide.png)
+| $photo(現場照片)
+| $signature(巡檢人員簽名)
+
+這個路徑示例 C:\\CheckUp 只是註解，不會渲染或成為欄位值。
+字面 \@ 也只是註解內容；在參數中同樣依 escape 規則解析。

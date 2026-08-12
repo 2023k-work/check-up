@@ -1,0 +1,5 @@
+@version(2)
+@repeat(month)
+@help(A)
+@help(B)
+| 日期 | $unknown(值) |

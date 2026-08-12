@@ -1,0 +1,28 @@
+export const DiagnosticCodes = {
+  MalformedDirective: "CUP001",
+  MalformedField: "CUP002",
+  UnclosedParenthesis: "CUP003",
+  UnexpectedClosingParenthesis: "CUP004",
+  InvalidEscape: "CUP005",
+  UnknownDirective: "CUP006",
+  UnknownField: "CUP007",
+  InvalidArgumentCount: "CUP008",
+  InvalidArgument: "CUP009",
+  InvalidTableCell: "CUP010",
+  MarkdownSeparator: "CUP011",
+  TrailingTableCell: "CUP012",
+  MissingRepeatTarget: "CUP013",
+  UnsupportedRepeatType: "CUP014",
+  MissingMonthSource: "CUP015",
+  AmbiguousTableDirective: "CUP016",
+  MissingHelpTarget: "CUP017",
+  AmbiguousHelpTarget: "CUP018",
+  MissingVersion: "CUP019",
+  DuplicateVersion: "CUP020",
+  VersionMustBeFirst: "CUP021",
+  UnsupportedVersion: "CUP022",
+  DuplicateTitle: "CUP023",
+  InvalidResourcePath: "CUP024",
+} as const;
+
+export type DiagnosticCode = (typeof DiagnosticCodes)[keyof typeof DiagnosticCodes];
