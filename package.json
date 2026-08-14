@@ -18,11 +18,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:web": "npm run build --prefix apps/web-editor",
-    "dev:web": "npm run build && npm run dev --prefix apps/web-editor",
+    "build:renderer": "npm run build && npm run build --prefix packages/renderer",
+    "build:web": "npm run build && npm run build --prefix packages/renderer && npm run build --prefix apps/web",
+    "dev:web": "npm run build && npm run build --prefix packages/renderer && npm run dev --prefix apps/web",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "typecheck:web": "npm run typecheck --prefix apps/web-editor",
-    "test": "vitest run tests"
+    "typecheck:renderer": "npm run build && npm run typecheck --prefix packages/renderer",
+    "typecheck:web": "npm run typecheck --prefix apps/web",
+    "test": "vitest run tests",
+    "test:renderer": "npm run test --prefix packages/renderer",
+    "test:web": "npm run test --prefix apps/web"
   },
   "engines": {
     "node": ">=20"
@@ -30,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^26.2.0",
     "typescript": "^7.0.2",
+    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }

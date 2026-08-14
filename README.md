@@ -104,15 +104,13 @@ npm run build
 
 ### Web Editor MVP
 
-[`apps/web-editor`](apps/web-editor) 是 React + Vite 的最小整合編輯器。它以 `import { parseCup } from "@checkup/parser"` 呼叫 Parser，並只將回傳的 `CupDocument` 傳給 Preview；Web Editor 不包含第二套 `.cup` 語法或 directive 關聯邏輯。
+[`apps/web`](apps/web) 是以原生 HTML、CSS、TypeScript 與 Vite 建立的最小整合編輯器。它呼叫 `@checkup/parser` 取得 `CupDocument`，再交給 `@checkup/renderer` 建立 `RenderDocument`；Web Editor 不包含第二套 `.cup` 語法、directive 關聯或 renderer model 邏輯。
 
 ```sh
-cd apps/web-editor
-npm install
-npm run dev
+npm run dev:web
 ```
 
-Editor 提供即時 diagnostics、可定位的 line／column／range、Parsed Output JSON，以及從 AST 渲染 title、info、table 和基礎欄位的 Preview。根目錄也提供 `npm run dev:web`、`npm run typecheck:web` 與 `npm run build:web` 快捷指令。
+Editor 提供即時 diagnostics、line／column 資訊，以及從 `RenderDocument` 顯示 title、info、table、field、help 和 repeat metadata 的 Preview。根目錄也提供 `npm run dev:web`、`npm run typecheck:web`、`npm run test:web` 與 `npm run build:web` 快捷指令。
 
 ## 文件
 

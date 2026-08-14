@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CheckUp Format v2 browser editor and live preview"
+    />
+    <title>CheckUp</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>CheckUp</h1>
+        <p>.cup Format v2 editor</p>
+      </header>
+
+      <main class="workspace">
+        <section class="pane editor-pane" aria-labelledby="editor-heading">
+          <div class="pane-heading">
+            <h2 id="editor-heading">Editor</h2>
+            <span>.cup source</span>
+          </div>
+          <textarea
+            id="source-editor"
+            aria-label="CheckUp .cup 原始碼"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          ></textarea>
+        </section>
+
+        <section class="pane preview-pane" aria-labelledby="preview-heading">
+          <div class="pane-heading">
+            <h2 id="preview-heading">Preview</h2>
+            <output id="status" aria-live="polite">準備中</output>
+          </div>
+          <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
+          <div id="preview" class="preview" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
