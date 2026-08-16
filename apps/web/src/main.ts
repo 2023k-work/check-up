@@ -1,156 +1,203 @@
-import {
-  parseCup,
-  type CupCellEdit,
-  type CupDocument,
-  type Diagnostic,
-} from "@checkup/parser";
+import type { CupCellEdit, Diagnostic, FieldType, TableNode } from "@checkup/parser";
 import {
   createRenderModel,
-  type RenderDocument,
   type RenderField,
   type RenderHelp,
   type RenderTableBlock,
 } from "@checkup/renderer";
 import { defaultSource } from "./default-source.js";
-import { applyPreviewEdits } from "./edit-session.js";
+import { DocumentSession, type EditorMode } from "./document-session.js";
+import type { EditableFieldType } from "./schema-mutator.js";
 import "./styles.css";
 
-const editor = requireElement<HTMLTextAreaElement>("#source-editor");
-const preview = requireElement<HTMLElement>("#preview");
+const editableFieldTypes: readonly EditableFieldType[] = [
+  "date", "month", "day", "time", "check", "text", "number", "photo", "signature",
+];
+const modeDescriptions: Record<EditorMode, string> = {
+  design: "設計 Schema、欄位順序與 table directives",
+  fill: "填寫資料列；欄位宣告保持鎖定",
+  source: "完整 .cup source；進階模式",
+};
+
+const designView = requireElement<HTMLElement>("#design-view");
+const fillView = requireElement<HTMLElement>("#fill-view");
+const sourceView = requireElement<HTMLElement>("#source-view");
+const sourceEditor = requireElement<HTMLTextAreaElement>("#source-editor");
 const diagnosticsPanel = requireElement<HTMLElement>("#diagnostics");
 const status = requireElement<HTMLOutputElement>("#status");
-const renderButton = requireElement<HTMLButtonElement>("#render-button");
-const writeBackButton = requireElement<HTMLButtonElement>("#write-back-button");
+const modeDescription = requireElement<HTMLElement>("#mode-description");
+const modeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-mode]")];
+const session = new DocumentSession(defaultSource);
 
-let parsedDocument: CupDocument | null = null;
-const pendingEdits = new Map<string, CupCellEdit>();
-
-editor.value = defaultSource;
-editor.addEventListener("input", () => {
-  parsedDocument = null;
-  pendingEdits.clear();
-  writeBackButton.disabled = true;
-  status.value = "Source 已變更，按 > 更新 Preview";
-  status.className = "status-warning";
+sourceEditor.value = session.snapshot.source;
+for (const button of modeButtons) {
+  const mode = button.dataset.mode as EditorMode;
+  button.hidden = !session.permissions[mode];
+  button.addEventListener("click", () => {
+    session.setMode(mode);
+    renderAll("模式已切換");
+  });
+}
+sourceEditor.addEventListener("input", () => {
+  const snapshot = session.setSource(sourceEditor.value);
+  renderDiagnostics(snapshot.diagnostics);
+  renderStatus(snapshot.success ? "原始碼已同步" : "原始碼含格式錯誤", snapshot.success ? "ok" : "error");
+  if (snapshot.success) {
+    renderDesign();
+    renderFill();
+  }
 });
-renderButton.addEventListener("click", updatePreview);
-writeBackButton.addEventListener("click", writeBack);
-updatePreview();
 
-function updatePreview(): void {
-  clearDiagnostics();
+renderAll("已載入，預設進入填寫模式");
 
-  try {
-    const result = parseCup(editor.value);
-    if (!result.success) {
-      showEmptyPreview("修正格式錯誤後，Preview 會在這裡更新。");
-      showDiagnostics(result.diagnostics);
-      status.value = "解析失敗";
-      status.className = "status-error";
-      return;
+function renderAll(message: string): void {
+  const snapshot = session.snapshot;
+  for (const button of modeButtons) {
+    const mode = button.dataset.mode as EditorMode;
+    button.classList.toggle("is-active", mode === snapshot.mode);
+    button.setAttribute("aria-pressed", String(mode === snapshot.mode));
+  }
+  designView.hidden = snapshot.mode !== "design";
+  fillView.hidden = snapshot.mode !== "fill";
+  sourceView.hidden = snapshot.mode !== "source";
+  modeDescription.textContent = modeDescriptions[snapshot.mode];
+  if (sourceEditor.value !== snapshot.source) sourceEditor.value = snapshot.source;
+  renderDiagnostics(snapshot.diagnostics);
+  renderDesign();
+  renderFill();
+  renderStatus(message, snapshot.success ? "ok" : "error");
+}
+
+function renderDesign(): void {
+  const snapshot = session.snapshot;
+  designView.replaceChildren();
+  const heading = documentNode("div", undefined, "view-heading");
+  heading.append(documentNode("h2", "表單設計"), documentNode("p", "修改欄位 Schema；資料列值會跟著欄位順序安全搬移。"));
+  designView.append(heading);
+  if (!snapshot.success) {
+    designView.append(documentNode("p", "請先在原始碼模式修正格式錯誤。", "empty-state"));
+    return;
+  }
+
+  const tables = snapshot.document.nodes.filter((node): node is TableNode => node.kind === "table");
+  for (const [tableIndex, table] of tables.entries()) {
+    const card = element("section", "design-card");
+    const cardHeader = element("div", "design-card-header");
+    cardHeader.append(documentNode("h3", `Table ${tableIndex + 1}`));
+    const repeatLabel = element("label", "toggle-label");
+    const repeat = input("checkbox");
+    repeat.checked = table.repeat !== undefined;
+    repeat.disabled = !snapshot.document.fields.some((field) => field.fieldType === "month") && !repeat.checked;
+    repeat.addEventListener("change", () => runDesignMutation(() => session.setRepeat(table.id, repeat.checked)));
+    repeatLabel.append(repeat, document.createTextNode(" @repeat(month)"));
+    cardHeader.append(repeatLabel);
+    card.append(cardHeader);
+
+    const helpRow = element("label", "design-help");
+    helpRow.append(documentNode("span", "Table help"));
+    const help = input("text");
+    help.value = table.help?.text ?? "";
+    help.placeholder = "@help(...)（選填）";
+    help.addEventListener("change", () => runDesignMutation(() => session.setHelp(table.id, help.value)));
+    helpRow.append(help);
+    card.append(helpRow);
+
+    const list = element("div", "column-list");
+    for (const [columnIndex, column] of table.columns.entries()) {
+      const field = column.field;
+      if (field === null || field.fieldType === "unknown") {
+        list.append(documentNode("p", "不支援的欄位，請使用原始碼模式處理。", "empty-state"));
+        continue;
+      }
+      const row = element("div", "column-editor");
+      row.append(documentNode("span", String(columnIndex + 1), "column-index"));
+      const type = fieldTypeSelect(field.fieldType);
+      const label = input("text");
+      label.value = field.label ?? field.typeName;
+      const update = (): void => runDesignMutation(() => session.mutateSchema(table.id, {
+        kind: "update",
+        fieldId: column.id,
+        fieldType: type.value as EditableFieldType,
+        label: label.value.trim() || "未命名欄位",
+      }));
+      type.addEventListener("change", update);
+      label.addEventListener("change", update);
+      row.append(type, label);
+      row.append(actionButton("↑", "上移欄位", columnIndex === 0, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: -1 })));
+      row.append(actionButton("↓", "下移欄位", columnIndex === table.columns.length - 1, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: 1 })));
+      row.append(actionButton("刪除", "刪除欄位", table.columns.length === 1, () => session.mutateSchema(table.id, { kind: "delete", fieldId: column.id }), "danger"));
+      list.append(row);
     }
+    card.append(list);
 
-    const renderDocument = createRenderModel(result.document);
-    parsedDocument = result.document;
-    pendingEdits.clear();
-    writeBackButton.disabled = true;
-    renderPreview(renderDocument);
-
-    if (result.diagnostics.length > 0) {
-      showDiagnostics(result.diagnostics);
-      status.value = "已更新（含診斷）";
-      status.className = "status-warning";
-    } else {
-      status.value = "已更新";
-      status.className = "status-ok";
-    }
-  } catch (error: unknown) {
-    showEmptyPreview("目前無法產生 Preview。");
-    showRuntimeError(error);
-    status.value = "無法更新";
-    status.className = "status-error";
+    const addRow = element("div", "add-column");
+    const addType = fieldTypeSelect("text");
+    const addLabel = input("text");
+    addLabel.placeholder = "新欄位名稱";
+    const add = documentNode("button", "新增欄位") as HTMLButtonElement;
+    add.type = "button";
+    add.addEventListener("click", () => runDesignMutation(() => session.mutateSchema(table.id, {
+      kind: "add",
+      fieldType: addType.value as EditableFieldType,
+      label: addLabel.value.trim() || "新欄位",
+    })));
+    addRow.append(addType, addLabel, add);
+    card.append(addRow);
+    designView.append(card);
   }
 }
 
-function showEmptyPreview(message: string): void {
-  preview.replaceChildren(documentNode("p", message, "empty-state"));
-}
-
-function renderPreview(document: RenderDocument): void {
-  preview.replaceChildren();
-
+function renderFill(): void {
+  const snapshot = session.snapshot;
+  fillView.replaceChildren();
+  if (!snapshot.success) {
+    fillView.append(documentNode("p", "原始碼含錯誤，修正後才能填寫。", "empty-state"));
+    return;
+  }
+  const document = createRenderModel(snapshot.document);
   const article = element("article", "render-document");
-  const heading = element("h2", "document-title");
-  heading.textContent = document.title ?? "未命名檢查表";
-  article.append(heading);
-
+  article.append(documentNode("h2", document.title ?? "未命名檢查表", "document-title"));
   if (document.info.length > 0) {
     const info = element("div", "document-info");
-    for (const text of document.info) {
-      const paragraph = documentNode("p", text);
-      info.append(paragraph);
-    }
+    for (const text of document.info) info.append(documentNode("p", text));
     article.append(info);
   }
-
   const form = documentNode("form") as HTMLFormElement;
   form.addEventListener("submit", (event) => event.preventDefault());
   for (const block of document.blocks) {
-    if (block.kind === "field") {
-      form.append(renderField(block.field));
-    } else {
-      form.append(renderTable(block));
-    }
+    form.append(block.kind === "field" ? renderField(block.field) : renderTable(block));
   }
-
-  if (document.blocks.length === 0) {
-    form.append(documentNode("p", "這份文件目前沒有可顯示的欄位。", "empty-state"));
-  }
-
+  if (document.blocks.length === 0) form.append(documentNode("p", "這份文件目前沒有可填寫欄位。", "empty-state"));
   article.append(form);
-  preview.append(article);
+  fillView.append(article);
 }
 
 function renderTable(tableBlock: RenderTableBlock): HTMLElement {
   const section = element("section", "table-block");
-
-  if (tableBlock.repeat !== undefined) {
-    const repeat = element("p", "metadata-badge");
-    repeat.textContent = `每月重複範本 · 來源 ${tableBlock.repeat.sourceFieldId}`;
-    section.append(repeat);
-  }
-  if (tableBlock.help !== undefined) {
-    section.append(renderHelp(tableBlock.help));
-  }
-
+  if (tableBlock.repeat !== undefined) section.append(documentNode("p", "每月重複", "metadata-badge"));
+  if (tableBlock.help !== undefined) section.append(renderHelp(tableBlock.help));
   const scroller = element("div", "table-scroll");
   const table = documentNode("table");
   const head = documentNode("thead");
   const headerRow = documentNode("tr");
-  for (const column of tableBlock.columns) {
-    headerRow.append(documentNode("th", column.label ?? column.fieldType));
-  }
+  for (const column of tableBlock.columns) headerRow.append(documentNode("th", column.label ?? column.fieldType));
   head.append(headerRow);
   const body = documentNode("tbody");
   for (const row of tableBlock.rows) {
     const tableRow = documentNode("tr");
     for (const cell of row.cells) {
       const tableCell = documentNode("td");
-      if (cell.field === null) {
-        tableCell.append(documentNode("span", "無效欄位", "invalid-cell"));
-      } else {
-        tableCell.append(renderField(cell.field, true));
-      }
+      tableCell.append(cell.field === null ? documentNode("span", "無效欄位", "invalid-cell") : renderField(cell.field, true));
       tableRow.append(tableCell);
     }
     body.append(tableRow);
   }
   if (tableBlock.rows.length === 0) {
-    const emptyRow = documentNode("tr");
-    const emptyCell = documentNode("td", "尚無資料列", "invalid-cell") as HTMLTableCellElement;
-    emptyCell.colSpan = Math.max(1, tableBlock.columns.length);
-    emptyRow.append(emptyCell);
-    body.append(emptyRow);
+    const row = documentNode("tr");
+    const cell = documentNode("td", "尚無資料列", "invalid-cell") as HTMLTableCellElement;
+    cell.colSpan = Math.max(1, tableBlock.columns.length);
+    row.append(cell);
+    body.append(row);
   }
   table.append(head, body);
   scroller.append(table);
@@ -164,170 +211,118 @@ function renderField(field: RenderField, compact = false): HTMLElement {
   const label = documentNode("label", field.label ?? field.fieldType, "field-label") as HTMLLabelElement;
   label.htmlFor = controlId;
   wrapper.append(label, createFieldControl(field, controlId));
-
-  if (field.help !== undefined) {
-    wrapper.append(renderHelp(field.help));
-  }
+  if (field.help !== undefined) wrapper.append(renderHelp(field.help));
   return wrapper;
 }
 
-function createFieldControl(field: RenderField, id: string): HTMLElement {
-  const control = field.descriptor.control;
-  if (control === "checkbox") {
-    const checkbox = input(id, "checkbox");
-    checkbox.checked = field.value === true;
-    bindEdit(checkbox, field, () => checkbox.checked ? "正常" : "異常");
-    return checkbox;
+function createFieldControl(field: RenderField, id: string): HTMLInputElement {
+  const typeByControl: Partial<Record<RenderField["descriptor"]["control"], string>> = {
+    "date-picker": "date", "month-picker": "month", "day-input": "number", "time-picker": "time",
+    checkbox: "checkbox", "text-input": "text", "number-input": "number",
+    "photo-capture": "text", "signature-pad": "text", unsupported: "text",
+  };
+  const control = input(typeByControl[field.descriptor.control] ?? "text");
+  control.id = id;
+  if (field.descriptor.control === "checkbox") control.checked = field.value === true;
+  else control.value = field.value === null ? "" : String(field.value);
+  if (field.descriptor.control === "day-input") { control.min = "1"; control.max = "31"; }
+  if (field.descriptor.control === "photo-capture") control.placeholder = "圖片路徑";
+  if (field.descriptor.control === "signature-pad") control.placeholder = "簽名資料";
+  if (field.edit === undefined) {
+    control.disabled = true;
+  } else {
+    control.addEventListener("input", () => {
+      const value = control.type === "checkbox" ? (control.checked ? "正常" : "異常") : control.value;
+      applyFillEdit({ ...field.edit!, value });
+    });
   }
-  if (control === "date-picker") {
-    return editableInput(field, id, "date");
-  }
-  if (control === "month-picker") {
-    return editableInput(field, id, "month");
-  }
-  if (control === "time-picker") {
-    return editableInput(field, id, "time");
-  }
-  if (control === "day-input") {
-    const day = input(id, "number");
-    day.min = "1";
-    day.max = "31";
-    day.placeholder = "1–31";
-    initializeInput(day, field);
-    return day;
-  }
-  if (control === "number-input") {
-    return editableInput(field, id, "number");
-  }
-  if (control === "text-input") {
-    return editableInput(field, id, "text");
-  }
-  if (control === "photo-capture") {
-    const photo = editableInput(field, id, "text");
-    photo.placeholder = "圖片路徑";
-    return photo;
-  }
-  if (control === "signature-pad") {
-    const signature = editableInput(field, id, "text");
-    signature.className = "signature-placeholder";
-    signature.placeholder = "簽名資料";
-    return signature;
-  }
-
-  const unsupported = input(id, "text");
-  unsupported.disabled = true;
-  unsupported.placeholder = `不支援的欄位：${field.fieldType}`;
-  return unsupported;
-}
-
-function editableInput(field: RenderField, id: string, type: string): HTMLInputElement {
-  const control = input(id, type);
-  initializeInput(control, field);
   return control;
 }
 
-function initializeInput(control: HTMLInputElement, field: RenderField): void {
-  control.value = field.value === null ? "" : String(field.value);
-  bindEdit(control, field, () => control.value);
-}
-
-function bindEdit(
-  control: HTMLInputElement,
-  field: RenderField,
-  readValue: () => string,
-): void {
-  if (field.edit === undefined) {
-    control.disabled = true;
-    control.title = "欄位宣告不儲存資料；請在 table 資料列中填寫。";
-    return;
-  }
-  control.addEventListener("input", () => {
-    const edit: CupCellEdit = { ...field.edit!, value: readValue() };
-    pendingEdits.set(`${edit.tableId}/${edit.rowId}/${edit.fieldId}`, edit);
-    writeBackButton.disabled = false;
-    status.value = `Preview 有 ${pendingEdits.size} 項修改，按 < 回寫`;
-    status.className = "status-warning";
-  });
-}
-
-function writeBack(): void {
-  if (parsedDocument === null || pendingEdits.size === 0) {
-    return;
-  }
+function applyFillEdit(edit: CupCellEdit): void {
   try {
-    const result = applyPreviewEdits(editor.value, parsedDocument, [...pendingEdits.values()]);
-    if (!result.success) {
-      showDiagnostics(result.diagnostics);
-      status.value = "回寫後驗證失敗";
-      status.className = "status-error";
-      return;
-    }
-    editor.value = result.source;
-    parsedDocument = result.document;
-    pendingEdits.clear();
-    writeBackButton.disabled = true;
-    renderPreview(createRenderModel(result.document));
-    clearDiagnostics();
-    status.value = "已回寫並重新驗證";
-    status.className = "status-ok";
+    const snapshot = session.editCell(edit);
+    sourceEditor.value = snapshot.source;
+    renderDiagnostics(snapshot.diagnostics);
+    renderStatus("填寫值已同步到原始碼", "ok");
   } catch (error: unknown) {
     showRuntimeError(error);
-    status.value = "無法回寫";
-    status.className = "status-error";
   }
+}
+
+function runDesignMutation(action: () => unknown): void {
+  try {
+    action();
+    renderAll("Schema 已同步到填寫與原始碼模式");
+  } catch (error: unknown) {
+    showRuntimeError(error);
+  }
+}
+
+function fieldTypeSelect(value: FieldType): HTMLSelectElement {
+  const select = documentNode("select");
+  for (const fieldType of editableFieldTypes) {
+    const option = documentNode("option", `$${fieldType}`) as HTMLOptionElement;
+    option.value = fieldType;
+    option.selected = fieldType === value;
+    select.append(option);
+  }
+  return select;
+}
+
+function actionButton(
+  text: string,
+  title: string,
+  disabled: boolean,
+  action: () => unknown,
+  variant?: "danger",
+): HTMLButtonElement {
+  const button = documentNode("button", text) as HTMLButtonElement;
+  button.type = "button";
+  button.title = title;
+  button.disabled = disabled;
+  if (variant !== undefined) button.className = variant;
+  button.addEventListener("click", () => runDesignMutation(action));
+  return button;
 }
 
 function renderHelp(help: RenderHelp): HTMLElement {
   const aside = element("aside", "field-help");
   aside.append(documentNode("span", help.text));
-  if (help.imagePath !== undefined) {
-    aside.append(documentNode("code", help.imagePath));
-  }
+  if (help.imagePath !== undefined) aside.append(documentNode("code", help.imagePath));
   return aside;
 }
 
-function showDiagnostics(diagnostics: readonly Diagnostic[]): void {
+function renderDiagnostics(diagnostics: readonly Diagnostic[]): void {
   diagnosticsPanel.replaceChildren();
-  diagnosticsPanel.hidden = false;
-  const heading = documentNode("strong", "格式診斷");
+  diagnosticsPanel.hidden = diagnostics.length === 0;
+  if (diagnostics.length === 0) return;
   const list = documentNode("ul");
   for (const diagnostic of diagnostics) {
-    const location = `第 ${diagnostic.source.start.line} 行，第 ${diagnostic.source.start.column} 欄`;
-    const item = documentNode(
-      "li",
-      `${location} · ${diagnostic.code}: ${diagnostic.message}`,
-      `diagnostic-${diagnostic.severity}`,
-    );
-    list.append(item);
+    list.append(documentNode("li", `第 ${diagnostic.source.start.line} 行 · ${diagnostic.code}: ${diagnostic.message}`));
   }
-  diagnosticsPanel.append(heading, list);
+  diagnosticsPanel.append(documentNode("strong", "格式診斷"), list);
+}
+
+function renderStatus(message: string, tone: "ok" | "error"): void {
+  status.value = message;
+  status.className = tone === "ok" ? "status-ok" : "status-error";
 }
 
 function showRuntimeError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   diagnosticsPanel.hidden = false;
-  diagnosticsPanel.replaceChildren(
-    documentNode("strong", "Renderer 錯誤"),
-    documentNode("p", message),
-  );
+  diagnosticsPanel.replaceChildren(documentNode("strong", "操作失敗"), documentNode("p", message));
+  renderStatus("無法同步", "error");
 }
 
-function clearDiagnostics(): void {
-  diagnosticsPanel.hidden = true;
-  diagnosticsPanel.replaceChildren();
+function input(type: string): HTMLInputElement {
+  const node = documentNode("input") as HTMLInputElement;
+  node.type = type;
+  return node;
 }
 
-function input(id: string, type: string): HTMLInputElement {
-  const field = documentNode("input") as HTMLInputElement;
-  field.id = id;
-  field.type = type;
-  return field;
-}
-
-function element<K extends keyof HTMLElementTagNameMap>(
-  tagName: K,
-  className: string,
-): HTMLElementTagNameMap[K] {
+function element<K extends keyof HTMLElementTagNameMap>(tagName: K, className: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tagName);
   node.className = className;
   return node;
@@ -339,19 +334,13 @@ function documentNode<K extends keyof HTMLElementTagNameMap>(
   className?: string,
 ): HTMLElementTagNameMap[K] {
   const node = document.createElement(tagName);
-  if (text !== undefined) {
-    node.textContent = text;
-  }
-  if (className !== undefined) {
-    node.className = className;
-  }
+  if (text !== undefined) node.textContent = text;
+  if (className !== undefined) node.className = className;
   return node;
 }
 
 function requireElement<T extends Element>(selector: string): T {
   const node = document.querySelector<T>(selector);
-  if (node === null) {
-    throw new Error(`Missing required element: ${selector}`);
-  }
+  if (node === null) throw new Error(`Missing required element: ${selector}`);
   return node;
 }

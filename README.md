@@ -252,15 +252,12 @@ Escapes are processed before arguments or table cells are split. For example, `$
 @checkup/parser
     ↓
 CupDocument + diagnostics
-    ↓
-@checkup/renderer
-    ↓
-RenderDocument
-    ↓
-Web / UI renderer
+    ├─ Design mode (Schema mutations)
+    ├─ Fill mode → @checkup/renderer → semantic cell edits
+    └─ Source mode (complete .cup source)
 ```
 
-The parser recognizes `.cup` syntax, validates v2 rules, and resolves directive targets. The framework-neutral renderer consumes `CupDocument`; it does not parse source again or rebind directives. A UI can then map `RenderDocument` descriptors to its own controls.
+The parser recognizes `.cup` syntax, validates v2 rules, and resolves directive targets. The Web Editor keeps one shared source/document session for Design, Fill, and Source modes; switching modes never creates another document copy. The framework-neutral renderer consumes `CupDocument` for Fill mode, while source-range mutators apply value or Schema edits without a reverse parser. Mode permissions can hide Design and Source for fill-only deployments.
 
 ## Packages
 
@@ -268,7 +265,7 @@ The parser recognizes `.cup` syntax, validates v2 rules, and resolves directive 
 | --- | --- | --- |
 | `@checkup/parser` | Fault-tolerant parsing, validation, AST construction, and directive binding | `.cup` string → `ParseResult` with `CupDocument` and diagnostics |
 | `@checkup/renderer` | Framework-neutral render model creation and field-control descriptors | `CupDocument` → `RenderDocument` |
-| `@checkup/web` | Browser-based editor MVP with live diagnostics and preview | Editor source → rendered browser preview |
+| `@checkup/web` | Three-mode browser editor with shared state, Schema design, record filling, source editing, and live diagnostics | Shared `.cup` source ↔ Design / Fill / Source views |
 
 The parser's public API is exported from [`src/index.ts`](src/index.ts); renderer code lives in [`packages/renderer`](packages/renderer), and the Web Editor lives in [`apps/web`](apps/web).
 
@@ -296,7 +293,7 @@ CheckUp is under active development.
 - **Format v2:** the repository contains a frozen normative implementation reference.
 - **Parser:** implemented in strict TypeScript with validation, diagnostics, recovery, and directive binding.
 - **Renderer:** a framework-neutral `RenderDocument` layer and field registry are implemented.
-- **Web Editor:** an MVP provides live parsing, line-and-column diagnostics, and a browser preview. It is not yet a complete record capture, persistence, or submission system; signature input is currently a preview placeholder, and monthly repeat remains template metadata for consumers to expand.
+- **Web Editor:** Design, Fill, and Source modes share one document session. Design supports table column add/delete/reorder/type/label edits plus table help and monthly repeat; Fill writes only data-row cells; Source retains complete advanced content. Persistence and submission workflows remain future work.
 
 ## Roadmap
 
@@ -307,7 +304,7 @@ Parser ✓
     ↓
 Renderer core ✓
     ↓
-Web Editor MVP ✓
+Three-mode Web Editor ✓
     ↓
 Complete interactive record workflows
 ```

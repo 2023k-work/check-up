@@ -14,18 +14,23 @@
       <header class="app-header">
         <h1>CheckUp</h1>
         <p>.cup Format v2 editor</p>
-        <div class="flow-controls" aria-label="Editor 與 Preview 資料流">
-          <button id="write-back-button" type="button" title="將 Preview 修改回寫至 .cup source" disabled>&lt;</button>
-          <button id="render-button" type="button" title="解析 .cup source 並更新 Preview">&gt;</button>
-        </div>
+        <nav class="mode-tabs" aria-label="編輯模式">
+          <button type="button" data-mode="design">設計</button>
+          <button type="button" data-mode="fill">填寫</button>
+          <button type="button" data-mode="source">原始碼</button>
+        </nav>
       </header>
 
-      <main class="workspace">
-        <section class="pane editor-pane" aria-labelledby="editor-heading">
-          <div class="pane-heading">
-            <h2 id="editor-heading">Editor</h2>
-            <span>.cup source</span>
-          </div>
+      <main class="editor-shell">
+        <div class="workspace-status">
+          <span id="mode-description"></span>
+          <output id="status" aria-live="polite">準備中</output>
+        </div>
+        <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
+
+        <section id="design-view" class="mode-view" aria-label="設計模式"></section>
+        <section id="fill-view" class="mode-view" aria-label="填寫模式"></section>
+        <section id="source-view" class="mode-view source-view" aria-label="原始碼模式">
           <textarea
             id="source-editor"
             aria-label="CheckUp .cup 原始碼"
@@ -33,15 +38,6 @@
             autocapitalize="off"
             spellcheck="false"
           ></textarea>
-        </section>
-
-        <section class="pane preview-pane" aria-labelledby="preview-heading">
-          <div class="pane-heading">
-            <h2 id="preview-heading">Preview</h2>
-            <output id="status" aria-live="polite">準備中</output>
-          </div>
-          <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
-          <div id="preview" class="preview" aria-live="polite"></div>
         </section>
       </main>
     </div>
