@@ -29,9 +29,20 @@ $date(日期)
   });
 
   it("preserves table row and cell structure", () => {
-    const table = onlyTable(render("@version(2)\n| $date(日期) | $text(設備)\n| $number(壓力)"));
-    expect(table.rows.map((row) => row.cells.length)).toEqual([2, 1]);
-    expect(table.rows[0]?.cells[1]?.field?.label).toBe("設備");
+    const table = onlyTable(render("@version(2)\n| $date(日期) | $text(設備)\n| 2026-08-16 | FE-001\n| 2026-08-17 | FE-002"));
+    expect(table.columns.map((column) => column.label)).toEqual(["日期", "設備"]);
+    expect(table.rows.map((row) => row.cells.length)).toEqual([2, 2]);
+    expect(table.rows[0]?.cells[1]?.field?.value).toBe("FE-001");
+    expect(table.rows[1]?.cells[1]?.field?.edit).toEqual({
+      tableId: "table-1",
+      rowId: "table-1-row-2",
+      fieldId: "table-1-field-2",
+    });
+  });
+
+  it("preserves time values for editable controls", () => {
+    const table = onlyTable(render("@version(2)\n| $time(時間)\n| 09:00\n| 09:15"));
+    expect(table.rows.map((row) => row.cells[0]?.field?.value)).toEqual(["09:00", "09:15"]);
   });
 
   it("maps every v2 field through the registry", () => {
@@ -61,13 +72,13 @@ $date(日期)
     const table = onlyTable(model);
 
     expect(table.repeat).toEqual({ type: "month", mode: "template", sourceFieldId: month?.id });
-    expect(table.rows).toHaveLength(1);
+    expect(table.rows).toHaveLength(0);
   });
 
   it("copies table-scoped help onto the table block", () => {
     const table = onlyTable(render("@version(2)\n@help(逐欄確認)\n| $check(正常)"));
     expect(table.help).toEqual({ text: "逐欄確認" });
-    expect(table.rows[0]?.cells[0]?.field?.help).toBeUndefined();
+    expect(table.columns[0]?.label).toBe("正常");
   });
 
   it("does not render comments or directives as content blocks", () => {

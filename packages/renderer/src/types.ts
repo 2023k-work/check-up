@@ -28,6 +28,12 @@ export interface RenderHelp {
 
 export type RenderFieldValue = string | number | boolean | null;
 
+export interface RenderCellEditTarget {
+  readonly tableId: string;
+  readonly rowId: string;
+  readonly fieldId: string;
+}
+
 export interface RenderField {
   readonly id: string;
   readonly fieldType: FieldType;
@@ -36,6 +42,7 @@ export interface RenderField {
   readonly value: RenderFieldValue;
   readonly descriptor: FieldRenderDescriptor;
   readonly help?: RenderHelp;
+  readonly edit?: RenderCellEditTarget;
 }
 
 export interface RenderFieldBlock {
@@ -44,8 +51,13 @@ export interface RenderFieldBlock {
 }
 
 export interface RenderTableCell {
-  /** Null preserves a recoverable invalid/empty parser cell without exposing its AST. */
   readonly field: RenderField | null;
+}
+
+export interface RenderTableColumn {
+  readonly id: string;
+  readonly label: string | null;
+  readonly fieldType: FieldType;
 }
 
 export interface RenderTableRow {
@@ -61,6 +73,8 @@ export interface RenderRepeatMetadata {
 
 export interface RenderTableBlock {
   readonly kind: "table";
+  readonly id: string;
+  readonly columns: readonly RenderTableColumn[];
   readonly rows: readonly RenderTableRow[];
   readonly help?: RenderHelp;
   readonly repeat?: RenderRepeatMetadata;

@@ -7,6 +7,7 @@
 
 | $month(巡檢月份) | $text(設備編號)
 | $date(填表日期) | $text(巡檢人員)
+| 2026-08 | AC-01 | 2026-08-16 | 王小明
 
 @repeat(month)
 以下註解不會中斷 repeat；repeat 仍只套用到下一個表格。
@@ -14,10 +15,12 @@
 | $number(壓力\, MPa) | $check(壓力正常)
 | $check(外觀正常) | $check(封條完整)
 | $text(備註 A\|B)
+| 16 | 09:00 | 6.2 | 正常 | 正常 | 正常 | 無異常
 
 @help(請確認壓力表指針位於綠色區域\(正常範圍\),assets/pressure-guide.png)
 | $photo(現場照片)
 | $signature(巡檢人員簽名)
+| assets/ac-01.png | 王小明
 
 這個路徑示例 C:\\CheckUp 只是註解，不會渲染或成為欄位值。
 字面 \@ 也只是註解內容；在參數中同樣依 escape 規則解析。

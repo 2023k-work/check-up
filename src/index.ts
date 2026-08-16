@@ -13,10 +13,14 @@ export type {
   InvalidNode,
   RepeatMetadata,
   TableCell,
+  TableColumn,
   TableNode,
   TableRow,
 } from "./ast/nodes.js";
 export type { SourcePosition, SourceRange } from "./ast/source-range.js";
+
+export { updateCupCell } from "./editor/mutator.js";
+export type { CupCellEdit, CupMutationResult } from "./editor/mutator.js";
 
 export { DiagnosticCodes } from "./diagnostics/diagnostic-codes.js";
 export type { DiagnosticCode } from "./diagnostics/diagnostic-codes.js";

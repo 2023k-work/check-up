@@ -75,9 +75,8 @@ function normalizeNode(node: CupNode): string {
     case "directive":
       return `directive:${node.directiveType}:${node.arguments.join("|")}`;
     case "table": {
-      const fields = node.rows
-        .flatMap((row) => row.cells)
-        .map((cell) => (cell.field === null ? "<invalid>" : normalizeField(cell.field)))
+      const fields = node.columns
+        .map((column) => (column.field === null ? "<invalid>" : normalizeField(column.field)))
         .join(",");
       const repeat = node.repeat === undefined ? "" : `:repeat=${node.repeat.type}`;
       const help = node.help === undefined

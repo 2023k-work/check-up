@@ -6,6 +6,7 @@ export type {
   FieldRenderDescriptor,
   FieldValueKind,
   RenderBlock,
+  RenderCellEditTarget,
   RenderDocument,
   RenderField,
   RenderFieldBlock,
@@ -14,5 +15,6 @@ export type {
   RenderRepeatMetadata,
   RenderTableBlock,
   RenderTableCell,
+  RenderTableColumn,
   RenderTableRow,
 } from "./types.js";

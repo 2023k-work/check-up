@@ -4,12 +4,18 @@
 
 | $month(月份)
 | $text(設備編號)
+| 2026-08 | FE-001
 
 @repeat(month)
 | $day(日) | $time(時間) | $check(正常)
+| 1 | 09:00 | 正常
+| 2 | 09:15 | 異常
 
 | $text(備註)
+| 2 樓滅火器壓力偏低
 
 | $photo(現場照片)
+| images/floor-2.png
 
 | $signature(檢查人員)
+| 王小明

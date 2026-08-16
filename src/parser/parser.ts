@@ -9,6 +9,7 @@ import type {
   FieldType,
   InvalidNode,
   TableCell,
+  TableColumn,
   TableNode,
   TableRow,
 } from "../ast/nodes.js";
@@ -27,6 +28,7 @@ import {
   trimStructuralWhitespace,
   type SourceLine,
 } from "./tokenizer.js";
+import { scanEscape } from "./escape.js";
 
 const directiveTypes: Readonly<Record<string, DirectiveType>> = {
   version: "version",
@@ -73,7 +75,7 @@ export function parseCup(source: string): ParseResult {
 
     const trimmed = line.text.slice(trimmedRange.start, trimmedRange.start + trimmedRange.length);
     if (trimmed[0] === "|") {
-      const rows: TableRow[] = [];
+      const tableLines: ParsedTableLine[] = [];
       const tableStart = createPosition(
         line.startOffset + trimmedRange.start,
         line.number,
@@ -89,7 +91,7 @@ export function parseCup(source: string): ParseResult {
           break;
         }
 
-        rows.push(parseTableRow(candidate, candidateTrim.start, diagnostics));
+        tableLines.push(parseTableLine(candidate, candidateTrim.start, diagnostics));
         lastLine = candidate;
         candidateIndex += 1;
       }
@@ -101,8 +103,13 @@ export function parseCup(source: string): ParseResult {
         lastLine.text.length + 1,
       );
       const tableSource = createRange(tableStart, tableEnd);
+      const tableIndex = nodes.filter((node) => node.kind === "table").length + 1;
+      const tableId = `table-${tableIndex}`;
+      const { columns, rows } = buildTableModel(tableId, tableLines, diagnostics);
       nodes.push({
+        id: tableId,
         kind: "table",
+        columns,
         rows,
         source: tableSource,
         rawText: source.slice(tableStart.offset, tableEnd.offset),
@@ -119,7 +126,7 @@ export function parseCup(source: string): ParseResult {
     if (trimmed[0] === "@") {
       nodes.push(parseDirective(trimmed, sourceRange, diagnostics));
     } else if (trimmed[0] === "$") {
-      const field = parseField(trimmed, sourceRange, diagnostics);
+      const field = parseField(trimmed, sourceRange, diagnostics, `field-${nodes.length + 1}`);
       nodes.push(field ?? createInvalidNode(sourceRange, trimmed));
     } else {
       nodes.push(createCommentNode(trimmed, sourceRange));
@@ -164,7 +171,12 @@ function parseDirective(text: string, source: SourceRange, diagnostics: Diagnost
   return node;
 }
 
-function parseField(text: string, source: SourceRange, diagnostics: Diagnostic[]): FieldNode | null {
+function parseField(
+  text: string,
+  source: SourceRange,
+  diagnostics: Diagnostic[],
+  id: string,
+): FieldNode | null {
   const call = parseCall(text, "$", source.start, DiagnosticCodes.MalformedField, diagnostics);
   if (call === null) {
     return null;
@@ -172,6 +184,7 @@ function parseField(text: string, source: SourceRange, diagnostics: Diagnostic[]
 
   const fieldType = fieldTypes[call.name] ?? "unknown";
   const node: FieldNode = {
+    id,
     kind: "field",
     fieldType,
     typeName: call.name,
@@ -200,9 +213,20 @@ function parseField(text: string, source: SourceRange, diagnostics: Diagnostic[]
   return node;
 }
 
-function parseTableRow(line: SourceLine, leadingPipeIndex: number, diagnostics: Diagnostic[]): TableRow {
+interface ParsedTableCell {
+  readonly source: SourceRange;
+  readonly rawText: string;
+}
+
+interface ParsedTableLine {
+  readonly cells: readonly ParsedTableCell[];
+  readonly source: SourceRange;
+  readonly rawText: string;
+}
+
+function parseTableLine(line: SourceLine, leadingPipeIndex: number, diagnostics: Diagnostic[]): ParsedTableLine {
   const segments = splitTableCells(line.text, leadingPipeIndex);
-  const cells: TableCell[] = [];
+  const cells: ParsedTableCell[] = [];
   const rowStart = createPosition(line.startOffset + leadingPipeIndex, line.number, leadingPipeIndex + 1);
   const rowSource = createSingleLineRange(rowStart, line.text.length - leadingPipeIndex);
   let separatorCandidates = segments;
@@ -232,36 +256,18 @@ function parseTableRow(line: SourceLine, leadingPipeIndex: number, diagnostics: 
       line.number,
       segment.startIndex + cellTrim.start + 1,
     );
-    const cellSource = createSingleLineRange(cellStart, Math.max(1, cellTrim.length));
+    const cellEnd = createPosition(
+      cellStart.offset + cellTrim.length,
+      cellStart.line,
+      cellStart.column + cellTrim.length,
+    );
+    const cellSource = createRange(cellStart, cellEnd);
     const trimmed =
       cellTrim.length === 0
         ? ""
         : segment.text.slice(cellTrim.start, cellTrim.start + cellTrim.length);
 
-    if (trimmed.length === 0) {
-      const trailingCell = index === segments.length - 1 && line.text.trimEnd().endsWith("|");
-      addError(
-        diagnostics,
-        trailingCell ? DiagnosticCodes.TrailingTableCell : DiagnosticCodes.InvalidTableCell,
-        trailingCell ? "A trailing '|' creates an empty table cell." : "Table cells cannot be empty.",
-        cellSource,
-      );
-      cells.push({ field: null, source: cellSource, rawText: trimmed });
-      continue;
-    }
-
-    if (trimmed[0] !== "$") {
-      addError(
-        diagnostics,
-        DiagnosticCodes.InvalidTableCell,
-        "Every table cell must contain exactly one field declaration; literal label cells are not allowed.",
-        cellSource,
-      );
-      cells.push({ field: null, source: cellSource, rawText: trimmed });
-      continue;
-    }
-
-    cells.push({ field: parseField(trimmed, cellSource, diagnostics), source: cellSource, rawText: trimmed });
+    cells.push({ source: cellSource, rawText: trimmed });
   }
 
   return {
@@ -269,6 +275,117 @@ function parseTableRow(line: SourceLine, leadingPipeIndex: number, diagnostics: 
     source: rowSource,
     rawText: line.text.slice(leadingPipeIndex),
   };
+}
+
+function buildTableModel(
+  tableId: string,
+  lines: readonly ParsedTableLine[],
+  diagnostics: Diagnostic[],
+): { readonly columns: readonly TableColumn[]; readonly rows: readonly TableRow[] } {
+  const columns: TableColumn[] = [];
+  let dataStart = lines.length;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]!;
+    const declarationLine =
+      lineIndex === 0 || line.cells.every((cell) => cell.rawText.startsWith("$"));
+    if (!declarationLine) {
+      dataStart = lineIndex;
+      break;
+    }
+
+    for (const cell of line.cells) {
+      const columnIndex = columns.length + 1;
+      const fieldId = `${tableId}-field-${columnIndex}`;
+      let field: FieldNode | null = null;
+      if (cell.rawText.startsWith("$")) {
+        field = parseField(cell.rawText, cell.source, diagnostics, fieldId);
+      } else {
+        const trailingCell = cell.rawText === "" && cell === line.cells[line.cells.length - 1];
+        addError(
+          diagnostics,
+          trailingCell ? DiagnosticCodes.TrailingTableCell : DiagnosticCodes.InvalidTableCell,
+          trailingCell
+            ? "A trailing '|' creates an empty table column."
+            : "Every table column must contain exactly one field declaration.",
+          cell.source,
+        );
+      }
+      columns.push({ id: fieldId, field });
+    }
+  }
+
+  if (columns.length === 0 && lines.length > 0) {
+    addError(
+      diagnostics,
+      DiagnosticCodes.MissingTableColumns,
+      "A .cup table must begin with one or more $field(...) column declarations.",
+      lines[0]!.source,
+    );
+  }
+
+  const rows: TableRow[] = [];
+  for (let lineIndex = dataStart; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]!;
+    const rowIndex = rows.length + 1;
+    const rowId = `${tableId}-row-${rowIndex}`;
+    if (line.cells.length !== columns.length) {
+      addError(
+        diagnostics,
+        DiagnosticCodes.InconsistentTableRow,
+        `Table row has ${line.cells.length} cells but ${columns.length} columns are declared.`,
+        line.source,
+      );
+    }
+
+    const cells: TableCell[] = line.cells.map((cell, cellIndex) => ({
+      id: `${rowId}-cell-${cellIndex + 1}`,
+      fieldId: columns[cellIndex]?.id ?? `${tableId}-field-${cellIndex + 1}`,
+      value: parseTableValue(cell, diagnostics),
+      source: cell.source,
+      rawText: cell.rawText,
+    }));
+    rows.push({ id: rowId, cells, source: line.source, rawText: line.rawText });
+  }
+
+  return { columns, rows };
+}
+
+function parseTableValue(cell: ParsedTableCell, diagnostics: Diagnostic[]): string {
+  let value = "";
+  for (let index = 0; index < cell.rawText.length; index += 1) {
+    const character = cell.rawText[index]!;
+    if (character !== "\\") {
+      value += character;
+      continue;
+    }
+
+    const escape = scanEscape(cell.rawText, index);
+    if (escape.kind === "dangling") {
+      addError(
+        diagnostics,
+        DiagnosticCodes.InvalidEscape,
+        "A trailing backslash is not a valid escape.",
+        createSingleLineRange(
+          createPosition(cell.source.start.offset + index, cell.source.start.line, cell.source.start.column + index),
+          1,
+        ),
+      );
+    } else if (escape.kind === "invalid") {
+      addError(
+        diagnostics,
+        DiagnosticCodes.InvalidEscape,
+        `'${escape.value}' is not a supported v2 escape.`,
+        createSingleLineRange(
+          createPosition(cell.source.start.offset + index, cell.source.start.line, cell.source.start.column + index),
+          2,
+        ),
+      );
+    }
+    value += escape.value;
+    index += escape.width - 1;
+  }
+  return value;
 }
 
 function validateDirective(node: DirectiveNode, diagnostics: Diagnostic[]): void {
@@ -500,13 +617,7 @@ function enumerateFields(nodes: readonly CupNode[]): readonly FieldNode[] {
     if (node.kind === "field") {
       fields.push(node);
     } else if (node.kind === "table") {
-      for (const row of node.rows) {
-        for (const cell of row.cells) {
-          if (cell.field !== null) {
-            fields.push(cell.field);
-          }
-        }
-      }
+      fields.push(...node.columns.flatMap((column) => column.field === null ? [] : [column.field]));
     }
   }
   return fields;

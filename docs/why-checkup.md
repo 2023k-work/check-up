@@ -97,9 +97,9 @@ These formats are not mutually exclusive. A product might define a form in Check
 | $photo(現場照片) | $signature(檢查人員)
 ```
 
-Here, `@title` and `@info` describe visible document content. Each `$...` declaration represents one fillable value. A CheckUp parser converts this source into a `CupDocument`; a renderer then converts that document into controls appropriate for its interface.
+Here, `@title` and `@info` describe visible document content. Each `$...` declaration defines a typed column; filled values live only in the matching table data-row cells. A CheckUp parser converts this source into a `CupDocument`; a renderer then converts that document into controls appropriate for its interface.
 
-Do not infer additional syntax from Markdown. In particular, CheckUp table rows do not use Markdown separator rows, and a table cell must contain exactly one recognized field declaration.
+Do not infer additional syntax from Markdown. In particular, CheckUp tables do not use Markdown separator rows. Declaration cells contain recognized fields, while each following data row contains one escaped value per declared column.
 
 ## Recommendation summary
 

@@ -36,7 +36,7 @@ describe("parseCup", () => {
     const result = parseCup("@version(2)\n| $date(日期)");
 
     const table = only(tableNodes(result.document.nodes));
-    const field = only(only(table.rows).cells).field;
+    const field = only(table.columns).field;
     expect(field).toMatchObject({ fieldType: "date", label: "日期" });
     expect(result.success).toBe(true);
   });
@@ -45,9 +45,8 @@ describe("parseCup", () => {
     const result = parseCup("@version(2)\n| $date(日期)\n| $text(設備名稱) | $number(壓力)");
 
     const table = only(tableNodes(result.document.nodes));
-    expect(table.rows).toHaveLength(2);
-    expect(table.rows[1]?.cells).toHaveLength(2);
-    expect(table.rows.flatMap((row) => row.cells.map((cell) => cell.field?.fieldType))).toEqual([
+    expect(table.rows).toHaveLength(0);
+    expect(table.columns.map((column) => column.field?.fieldType)).toEqual([
       "date",
       "text",
       "number",
@@ -67,8 +66,8 @@ describe("parseCup", () => {
 
     expectDiagnostic(result, DiagnosticCodes.InvalidTableCell);
     const table = only(tableNodes(result.document.nodes));
-    expect(table.rows[0]?.cells[0]?.field).toBeNull();
-    expect(table.rows[0]?.cells[1]?.field).not.toBeNull();
+    expect(table.columns[0]?.field).toBeNull();
+    expect(table.columns[1]?.field).not.toBeNull();
   });
 
   it("diagnoses a trailing pipe as an empty cell", () => {
@@ -87,7 +86,7 @@ describe("parseCup", () => {
     const repeatedTable = tables[1]!;
     expect(repeatedTable.repeat?.type).toBe("month");
     expect(repeatedTable.repeat?.monthSource.fieldType).toBe("month");
-    expect(repeatedTable.rows).toHaveLength(1);
+    expect(repeatedTable.rows).toHaveLength(0);
     expect(repeatedTable.repeat?.source.target).toBe(repeatedTable);
     expect(result.success).toBe(true);
   });
@@ -142,7 +141,7 @@ describe("parseCup", () => {
 
     const table = only(tableNodes(result.document.nodes));
     expect(table.help?.text).toBe("逐欄確認");
-    expect(table.rows[0]?.cells[0]?.field?.help).toBeUndefined();
+    expect(table.columns[0]?.field?.help).toBeUndefined();
     expect(result.success).toBe(true);
   });
 
@@ -175,10 +174,33 @@ describe("parseCup", () => {
   it("splits only on unescaped table pipes", () => {
     const result = parseCup("@version(2)\n| $text(A\\|B) | $check(正常)");
 
-    const row = only(only(tableNodes(result.document.nodes)).rows);
-    expect(row.cells).toHaveLength(2);
-    expect(row.cells[0]?.field?.label).toBe("A|B");
+    const table = only(tableNodes(result.document.nodes));
+    expect(table.columns).toHaveLength(2);
+    expect(table.columns[0]?.field?.label).toBe("A|B");
     expect(result.success).toBe(true);
+  });
+
+  it("separates table column declarations from editable data rows", () => {
+    const result = parseCup("@version(2)\n| $text(代碼) | $text(金額)\n| A\\|B | $100");
+    const table = only(tableNodes(result.document.nodes));
+
+    expect(table.id).toBe("table-1");
+    expect(table.columns.map((column) => column.id)).toEqual(["table-1-field-1", "table-1-field-2"]);
+    expect(table.rows[0]).toMatchObject({
+      id: "table-1-row-1",
+      cells: [
+        { id: "table-1-row-1-cell-1", fieldId: "table-1-field-1", value: "A|B" },
+        { id: "table-1-row-1-cell-2", fieldId: "table-1-field-2", value: "$100" },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("diagnoses unsupported escapes in table data values", () => {
+    expectDiagnostic(
+      parseCup("@version(2)\n| $text(備註)\n| 不支援\\nescape"),
+      DiagnosticCodes.InvalidEscape,
+    );
   });
 
   it("diagnoses an unescaped comma as multiple field arguments", () => {
@@ -237,13 +259,13 @@ describe("parseCup", () => {
 
     expect(result.success).toBe(false);
     const table = only(tableNodes(result.document.nodes));
-    expect(table.rows[0]?.cells).toHaveLength(2);
-    expect(table.rows[0]?.cells.every((cell) => cell.field !== null)).toBe(true);
+    expect(table.columns).toHaveLength(2);
+    expect(table.columns.every((column) => column.field !== null)).toBe(true);
   });
 
   it("preserves one-based line/column and absolute UTF-16 offset", () => {
     const source = "@version(2)\r\n  |   $date(日期)";
-    const field = only(only(only(tableNodes(parseCup(source).document.nodes)).rows).cells).field;
+    const field = only(only(tableNodes(parseCup(source).document.nodes)).columns).field;
 
     expect(field?.source.start).toMatchObject({ line: 2, column: 7, offset: source.indexOf("$") });
   });

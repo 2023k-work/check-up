@@ -56,7 +56,7 @@ $check(設備正常)
 
 ### Fields
 
-Fields begin with `$`. Each field declares one fillable value and carries its own label:
+Fields begin with `$`. Each field declares a value schema and carries its own label. A declaration never stores the filled value itself:
 
 ```cup
 @version(2)
@@ -67,15 +67,16 @@ $text(異常說明)
 
 ### Tables
 
-A line beginning with `|` declares a table row. Unescaped `|` characters separate cells:
+A line beginning with `|` belongs to a table. Leading `$field(...)` cells declare the columns; following rows store values in the matching cells:
 
 ```cup
 @version(2)
 | $date(日期) | $time(時間)
-| $check(設備外觀) | $text(備註)
+| 2026-08-16 | 09:00
+| 2026-08-17 | 09:15
 ```
 
-CheckUp tables are not Markdown tables. Do not add a `| --- |` separator row, and do not add a trailing `|`. Every cell contains exactly one field.
+CheckUp tables are not Markdown tables. Do not add a `| --- |` separator row or trailing `|`. Declaration cells contain exactly one field, and each data row must have the same number of cells as the declared columns. Values that contain syntax characters use the standard CheckUp escapes, such as `A\|B` for a literal `|`.
 
 ## Five-minute tutorial
 
@@ -83,9 +84,9 @@ CheckUp tables are not Markdown tables. Do not add a `| --- |` separator row, an
 2. Make `@version(2)` its first meaningful construct.
 3. Add a visible document name with `@title(我的第一份檢查表)`.
 4. Explain when to use it with `@info(開始工作前完成檢查)`.
-5. Declare the first check with `$check(工作區域整潔)`.
-6. Add values such as `$date(日期)`, `$time(時間)`, and `$text(備註)`.
-7. Put related fields into rows by starting each row with `|`.
+5. Declare typed table columns such as `$date(日期)`, `$time(時間)`, `$check(工作區域整潔)`, and `$text(備註)`.
+6. Add a data row below the declarations; actual values belong in its cells.
+7. Add more data rows with the same number of cells when needed.
 8. Put `@help(請確認通道沒有障礙物)` immediately before the field or table it should explain.
 
 The result is a complete document:
@@ -95,11 +96,9 @@ The result is a complete document:
 @title(我的第一份檢查表)
 @info(開始工作前完成檢查)
 
-| $date(日期) | $time(時間)
-| $check(工作區域整潔) | $text(備註)
-
 @help(請確認通道沒有障礙物)
-$check(逃生通道暢通)
+| $date(日期) | $time(時間) | $check(逃生通道暢通) | $text(備註)
+| 2026-08-16 | 09:00 | 正常 | 無異常
 ```
 
 9. For a monthly template, declare a month and place `@repeat(month)` before the table to repeat:
@@ -108,10 +107,13 @@ $check(逃生通道暢通)
 @version(2)
 @title(月度檢查表)
 
-$month(月份)
+| $month(月份)
+| 2026-08
 
 @repeat(month)
 | $day(日) | $check(已完成)
+| 1 | 正常
+| 2 | 異常
 ```
 
 `@repeat(month)` applies only to the next table. It uses the document's first `$month(...)` field as its month source; it does not repeat standalone fields.
@@ -240,7 +242,7 @@ Backslash (`\`) escapes exactly one following structural character. Format v2 de
 | `\|` | `|` |
 | `\\` | `\` |
 
-Escapes are processed before arguments or table cells are split. For example, `$text(區域 A\|B)` has one label containing a literal `|`, and `$number(壓力\, MPa)` has one label containing a comma. Other sequences such as `\n`, `\t`, and `\uXXXX` are not supported escapes.
+Escapes are processed before arguments or table cells are split. For example, `$text(區域 A\|B)` has one label containing a literal `|`, `$number(壓力\, MPa)` has one label containing a comma, and a data cell written as `A\|B` stores the value `A|B`. Other sequences such as `\n`, `\t`, and `\uXXXX` are not supported escapes.
 
 ## Architecture
 

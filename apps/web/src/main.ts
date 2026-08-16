@@ -1,4 +1,9 @@
-import { parseCup, type Diagnostic } from "@checkup/parser";
+import {
+  parseCup,
+  type CupCellEdit,
+  type CupDocument,
+  type Diagnostic,
+} from "@checkup/parser";
 import {
   createRenderModel,
   type RenderDocument,
@@ -7,15 +12,29 @@ import {
   type RenderTableBlock,
 } from "@checkup/renderer";
 import { defaultSource } from "./default-source.js";
+import { applyPreviewEdits } from "./edit-session.js";
 import "./styles.css";
 
 const editor = requireElement<HTMLTextAreaElement>("#source-editor");
 const preview = requireElement<HTMLElement>("#preview");
 const diagnosticsPanel = requireElement<HTMLElement>("#diagnostics");
 const status = requireElement<HTMLOutputElement>("#status");
+const renderButton = requireElement<HTMLButtonElement>("#render-button");
+const writeBackButton = requireElement<HTMLButtonElement>("#write-back-button");
+
+let parsedDocument: CupDocument | null = null;
+const pendingEdits = new Map<string, CupCellEdit>();
 
 editor.value = defaultSource;
-editor.addEventListener("input", debounce(updatePreview, 180));
+editor.addEventListener("input", () => {
+  parsedDocument = null;
+  pendingEdits.clear();
+  writeBackButton.disabled = true;
+  status.value = "Source 已變更，按 > 更新 Preview";
+  status.className = "status-warning";
+});
+renderButton.addEventListener("click", updatePreview);
+writeBackButton.addEventListener("click", writeBack);
 updatePreview();
 
 function updatePreview(): void {
@@ -32,6 +51,9 @@ function updatePreview(): void {
     }
 
     const renderDocument = createRenderModel(result.document);
+    parsedDocument = result.document;
+    pendingEdits.clear();
+    writeBackButton.disabled = true;
     renderPreview(renderDocument);
 
     if (result.diagnostics.length > 0) {
@@ -103,6 +125,12 @@ function renderTable(tableBlock: RenderTableBlock): HTMLElement {
 
   const scroller = element("div", "table-scroll");
   const table = documentNode("table");
+  const head = documentNode("thead");
+  const headerRow = documentNode("tr");
+  for (const column of tableBlock.columns) {
+    headerRow.append(documentNode("th", column.label ?? column.fieldType));
+  }
+  head.append(headerRow);
   const body = documentNode("tbody");
   for (const row of tableBlock.rows) {
     const tableRow = documentNode("tr");
@@ -117,7 +145,14 @@ function renderTable(tableBlock: RenderTableBlock): HTMLElement {
     }
     body.append(tableRow);
   }
-  table.append(body);
+  if (tableBlock.rows.length === 0) {
+    const emptyRow = documentNode("tr");
+    const emptyCell = documentNode("td", "尚無資料列", "invalid-cell") as HTMLTableCellElement;
+    emptyCell.colSpan = Math.max(1, tableBlock.columns.length);
+    emptyRow.append(emptyCell);
+    body.append(emptyRow);
+  }
+  table.append(head, body);
   scroller.append(table);
   section.append(scroller);
   return section;
@@ -139,41 +174,43 @@ function renderField(field: RenderField, compact = false): HTMLElement {
 function createFieldControl(field: RenderField, id: string): HTMLElement {
   const control = field.descriptor.control;
   if (control === "checkbox") {
-    return input(id, "checkbox");
+    const checkbox = input(id, "checkbox");
+    checkbox.checked = field.value === true;
+    bindEdit(checkbox, field, () => checkbox.checked ? "正常" : "異常");
+    return checkbox;
   }
   if (control === "date-picker") {
-    return input(id, "date");
+    return editableInput(field, id, "date");
   }
   if (control === "month-picker") {
-    return input(id, "month");
+    return editableInput(field, id, "month");
   }
   if (control === "time-picker") {
-    return input(id, "time");
+    return editableInput(field, id, "time");
   }
   if (control === "day-input") {
     const day = input(id, "number");
     day.min = "1";
     day.max = "31";
     day.placeholder = "1–31";
+    initializeInput(day, field);
     return day;
   }
   if (control === "number-input") {
-    return input(id, "number");
+    return editableInput(field, id, "number");
   }
   if (control === "text-input") {
-    return input(id, "text");
+    return editableInput(field, id, "text");
   }
   if (control === "photo-capture") {
-    const photo = input(id, "file");
-    photo.accept = "image/*";
-    photo.setAttribute("capture", "environment");
+    const photo = editableInput(field, id, "text");
+    photo.placeholder = "圖片路徑";
     return photo;
   }
   if (control === "signature-pad") {
-    const signature = documentNode("button", "簽名欄（預覽）", "signature-placeholder") as HTMLButtonElement;
-    signature.id = id;
-    signature.type = "button";
-    signature.disabled = true;
+    const signature = editableInput(field, id, "text");
+    signature.className = "signature-placeholder";
+    signature.placeholder = "簽名資料";
     return signature;
   }
 
@@ -181,6 +218,63 @@ function createFieldControl(field: RenderField, id: string): HTMLElement {
   unsupported.disabled = true;
   unsupported.placeholder = `不支援的欄位：${field.fieldType}`;
   return unsupported;
+}
+
+function editableInput(field: RenderField, id: string, type: string): HTMLInputElement {
+  const control = input(id, type);
+  initializeInput(control, field);
+  return control;
+}
+
+function initializeInput(control: HTMLInputElement, field: RenderField): void {
+  control.value = field.value === null ? "" : String(field.value);
+  bindEdit(control, field, () => control.value);
+}
+
+function bindEdit(
+  control: HTMLInputElement,
+  field: RenderField,
+  readValue: () => string,
+): void {
+  if (field.edit === undefined) {
+    control.disabled = true;
+    control.title = "欄位宣告不儲存資料；請在 table 資料列中填寫。";
+    return;
+  }
+  control.addEventListener("input", () => {
+    const edit: CupCellEdit = { ...field.edit!, value: readValue() };
+    pendingEdits.set(`${edit.tableId}/${edit.rowId}/${edit.fieldId}`, edit);
+    writeBackButton.disabled = false;
+    status.value = `Preview 有 ${pendingEdits.size} 項修改，按 < 回寫`;
+    status.className = "status-warning";
+  });
+}
+
+function writeBack(): void {
+  if (parsedDocument === null || pendingEdits.size === 0) {
+    return;
+  }
+  try {
+    const result = applyPreviewEdits(editor.value, parsedDocument, [...pendingEdits.values()]);
+    if (!result.success) {
+      showDiagnostics(result.diagnostics);
+      status.value = "回寫後驗證失敗";
+      status.className = "status-error";
+      return;
+    }
+    editor.value = result.source;
+    parsedDocument = result.document;
+    pendingEdits.clear();
+    writeBackButton.disabled = true;
+    renderPreview(createRenderModel(result.document));
+    clearDiagnostics();
+    status.value = "已回寫並重新驗證";
+    status.className = "status-ok";
+  } catch (error: unknown) {
+    showRuntimeError(error);
+    status.value = "無法回寫";
+    status.className = "status-error";
+  }
 }
 
 function renderHelp(help: RenderHelp): HTMLElement {
@@ -260,14 +354,4 @@ function requireElement<T extends Element>(selector: string): T {
     throw new Error(`Missing required element: ${selector}`);
   }
   return node;
-}
-
-function debounce(callback: () => void, delay: number): () => void {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  return () => {
-    if (timeout !== undefined) {
-      clearTimeout(timeout);
-    }
-    timeout = setTimeout(callback, delay);
-  };
 }

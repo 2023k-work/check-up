@@ -23,6 +23,8 @@ export const DiagnosticCodes = {
   UnsupportedVersion: "CUP022",
   DuplicateTitle: "CUP023",
   InvalidResourcePath: "CUP024",
+  MissingTableColumns: "CUP025",
+  InconsistentTableRow: "CUP026",
 } as const;
 
 export type DiagnosticCode = (typeof DiagnosticCodes)[keyof typeof DiagnosticCodes];

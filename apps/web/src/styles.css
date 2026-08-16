@@ -49,6 +49,28 @@ textarea {
   font-size: 0.82rem;
 }
 
+.flow-controls {
+  display: flex;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.flow-controls button {
+  min-width: 2.4rem;
+  min-height: 2rem;
+  color: #183b2c;
+  background: #ddef9d;
+  border: 1px solid #f4ffd2;
+  border-radius: 0.35rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.flow-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1fr);
@@ -278,6 +300,15 @@ textarea {
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+th {
+  padding: 0.55rem 0.75rem;
+  color: #36433a;
+  background: #f1f4ed;
+  border: 1px solid #d8ded8;
+  font-size: 0.78rem;
+  text-align: left;
 }
 
 td {

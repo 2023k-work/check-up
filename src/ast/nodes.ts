@@ -44,6 +44,7 @@ export interface FieldHelp {
 }
 
 export interface FieldNode extends NodeBase {
+  readonly id: string;
   readonly kind: "field";
   readonly fieldType: FieldType;
   readonly typeName: string;
@@ -53,13 +54,21 @@ export interface FieldNode extends NodeBase {
   help?: FieldHelp;
 }
 
-export interface TableCell {
+export interface TableColumn {
+  readonly id: string;
   readonly field: FieldNode | null;
+}
+
+export interface TableCell {
+  readonly id: string;
+  readonly fieldId: string;
+  readonly value: string;
   readonly source: SourceRange;
   readonly rawText: string;
 }
 
 export interface TableRow {
+  readonly id: string;
   readonly cells: readonly TableCell[];
   readonly source: SourceRange;
   readonly rawText: string;
@@ -72,7 +81,9 @@ export interface RepeatMetadata {
 }
 
 export interface TableNode extends NodeBase {
+  readonly id: string;
   readonly kind: "table";
+  readonly columns: readonly TableColumn[];
   readonly rows: readonly TableRow[];
   repeat?: RepeatMetadata;
   help?: FieldHelp;
