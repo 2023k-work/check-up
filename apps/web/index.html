@@ -11,19 +11,46 @@
   </head>
   <body>
     <div id="app">
-      <header class="app-header">
-        <h1>CheckUp</h1>
-        <p>.cup Format v2 editor</p>
-        <nav class="mode-tabs" aria-label="編輯模式">
-          <button type="button" data-mode="design">設計</button>
-          <button type="button" data-mode="fill">填寫</button>
-          <button type="button" data-mode="source">原始碼</button>
+      <header id="checkup" class="app-header">
+        <a class="brand" href="#checkup" aria-label="CheckUp 首頁">CheckUp</a>
+        <p>.cup Format v2</p>
+        <nav class="site-nav" aria-label="主要導覽">
+          <a href="#checkup">CheckUp</a>
+          <a href="#editor">Editor</a>
+          <a href="https://github.com/2023k-work/check-up/blob/main/README.md">README</a>
+          <a href="https://github.com/2023k-work/check-up">GitHub</a>
         </nav>
       </header>
 
-      <main class="editor-shell">
+      <section class="intro" aria-labelledby="intro-title">
+        <div class="intro-copy">
+          <span class="eyebrow">Plain-text checklists</span>
+          <h1 id="intro-title">Turn readable <code>.cup</code> files into structured forms.</h1>
+          <p>
+            CheckUp is a small, version-control-friendly format for checklists,
+            inspection forms, and structured records.
+          </p>
+          <div class="intro-actions">
+            <a class="primary-action" href="https://github.com/2023k-work/check-up/blob/main/README.md">Read README</a>
+            <a class="secondary-action" href="#editor">Open Editor</a>
+          </div>
+        </div>
+        <pre aria-label="CheckUp 範例"><code>@version(2)
+@title(設備每日巡檢)
+| $date(日期) | $check(設備正常)</code></pre>
+      </section>
+
+      <main id="editor" class="editor-shell">
         <div class="workspace-status">
-          <span id="mode-description"></span>
+          <div class="workspace-context">
+            <strong>Editor</strong>
+            <span id="mode-description"></span>
+          </div>
+          <nav class="mode-tabs" aria-label="編輯模式">
+            <button type="button" data-mode="design">設計</button>
+            <button type="button" data-mode="fill">填寫</button>
+            <button type="button" data-mode="source">原始碼</button>
+          </nav>
           <output id="status" aria-live="polite">準備中</output>
         </div>
         <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
@@ -40,6 +67,14 @@
           ></textarea>
         </section>
       </main>
+
+      <footer class="app-footer">
+        <span>CheckUp · Human-readable forms in plain text.</span>
+        <nav aria-label="頁尾導覽">
+          <a href="https://github.com/2023k-work/check-up/blob/main/README.md">README</a>
+          <a href="https://github.com/2023k-work/check-up">GitHub repository</a>
+        </nav>
+      </footer>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
