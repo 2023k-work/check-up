@@ -15,10 +15,10 @@ const editableFieldTypes: readonly EditableFieldType[] = [
 ];
 type AppView = "home" | EditorMode;
 const modeDescriptions: Record<AppView, string> = {
-  home: "認識 CheckUp 與 .cup 格式",
-  design: "設計 Schema、欄位順序與 table directives",
-  fill: "填寫資料列；欄位宣告保持鎖定",
-  source: "完整 .cup source；進階模式",
+  home: "Learn about CheckUp and the .cup format",
+  design: "Edit the schema, field order, and table directives",
+  fill: "Fill data rows while field declarations remain locked",
+  source: "Edit the complete .cup source in advanced mode",
 };
 
 const homeView = requireElement<HTMLElement>("#home-view");
@@ -47,19 +47,19 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-vi
 sourceEditor.addEventListener("input", () => {
   const snapshot = session.setSource(sourceEditor.value);
   renderDiagnostics(snapshot.diagnostics);
-  renderStatus(snapshot.success ? "原始碼已同步" : "原始碼含格式錯誤", snapshot.success ? "ok" : "error");
+  renderStatus(snapshot.success ? "Source synced" : "Source contains format errors", snapshot.success ? "ok" : "error");
   if (snapshot.success) {
     renderDesign();
     renderFill();
   }
 });
 
-renderAll("歡迎使用 CheckUp");
+renderAll("Welcome to CheckUp");
 
 function openView(view: AppView): void {
   if (view !== "home") session.setMode(view);
   activeView = view;
-  renderAll(view === "home" ? "已回到首頁" : "模式已切換");
+  renderAll(view === "home" ? "Returned to Home" : "Mode changed");
 }
 
 function renderAll(message: string): void {
@@ -85,10 +85,10 @@ function renderDesign(): void {
   const snapshot = session.snapshot;
   designView.replaceChildren();
   const heading = documentNode("div", undefined, "view-heading");
-  heading.append(documentNode("h2", "表單設計"), documentNode("p", "修改欄位 Schema；資料列值會跟著欄位順序安全搬移。"));
+  heading.append(documentNode("h2", "Form Design"), documentNode("p", "Edit the field schema; data-row values move safely with their fields."));
   designView.append(heading);
   if (!snapshot.success) {
-    designView.append(documentNode("p", "請先在原始碼模式修正格式錯誤。", "empty-state"));
+    designView.append(documentNode("p", "Fix the format errors in Source mode first.", "empty-state"));
     return;
   }
 
@@ -110,7 +110,7 @@ function renderDesign(): void {
     helpRow.append(documentNode("span", "Table help"));
     const help = input("text");
     help.value = table.help?.text ?? "";
-    help.placeholder = "@help(...)（選填）";
+    help.placeholder = "@help(...) (optional)";
     help.addEventListener("change", () => runDesignMutation(() => session.setHelp(table.id, help.value)));
     helpRow.append(help);
     card.append(helpRow);
@@ -119,7 +119,7 @@ function renderDesign(): void {
     for (const [columnIndex, column] of table.columns.entries()) {
       const field = column.field;
       if (field === null || field.fieldType === "unknown") {
-        list.append(documentNode("p", "不支援的欄位，請使用原始碼模式處理。", "empty-state"));
+        list.append(documentNode("p", "Unsupported field. Edit it in Source mode.", "empty-state"));
         continue;
       }
       const row = element("div", "column-editor");
@@ -131,14 +131,14 @@ function renderDesign(): void {
         kind: "update",
         fieldId: column.id,
         fieldType: type.value as EditableFieldType,
-        label: label.value.trim() || "未命名欄位",
+        label: label.value.trim() || "Untitled field",
       }));
       type.addEventListener("change", update);
       label.addEventListener("change", update);
       row.append(type, label);
-      row.append(actionButton("↑", "上移欄位", columnIndex === 0, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: -1 })));
-      row.append(actionButton("↓", "下移欄位", columnIndex === table.columns.length - 1, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: 1 })));
-      row.append(actionButton("刪除", "刪除欄位", table.columns.length === 1, () => session.mutateSchema(table.id, { kind: "delete", fieldId: column.id }), "danger"));
+      row.append(actionButton("↑", "Move field up", columnIndex === 0, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: -1 })));
+      row.append(actionButton("↓", "Move field down", columnIndex === table.columns.length - 1, () => session.mutateSchema(table.id, { kind: "move", fieldId: column.id, direction: 1 })));
+      row.append(actionButton("Delete", "Delete field", table.columns.length === 1, () => session.mutateSchema(table.id, { kind: "delete", fieldId: column.id }), "danger"));
       list.append(row);
     }
     card.append(list);
@@ -146,13 +146,13 @@ function renderDesign(): void {
     const addRow = element("div", "add-column");
     const addType = fieldTypeSelect("text");
     const addLabel = input("text");
-    addLabel.placeholder = "新欄位名稱";
-    const add = documentNode("button", "新增欄位") as HTMLButtonElement;
+    addLabel.placeholder = "New field name";
+    const add = documentNode("button", "Add field") as HTMLButtonElement;
     add.type = "button";
     add.addEventListener("click", () => runDesignMutation(() => session.mutateSchema(table.id, {
       kind: "add",
       fieldType: addType.value as EditableFieldType,
-      label: addLabel.value.trim() || "新欄位",
+      label: addLabel.value.trim() || "New field",
     })));
     addRow.append(addType, addLabel, add);
     card.append(addRow);
@@ -164,12 +164,12 @@ function renderFill(): void {
   const snapshot = session.snapshot;
   fillView.replaceChildren();
   if (!snapshot.success) {
-    fillView.append(documentNode("p", "原始碼含錯誤，修正後才能填寫。", "empty-state"));
+    fillView.append(documentNode("p", "Fix the source errors before filling this document.", "empty-state"));
     return;
   }
   const document = createRenderModel(snapshot.document);
   const article = element("article", "render-document");
-  article.append(documentNode("h2", document.title ?? "未命名檢查表", "document-title"));
+  article.append(documentNode("h2", document.title ?? "Untitled Checklist", "document-title"));
   if (document.info.length > 0) {
     const info = element("div", "document-info");
     for (const text of document.info) info.append(documentNode("p", text));
@@ -180,14 +180,14 @@ function renderFill(): void {
   for (const block of document.blocks) {
     form.append(block.kind === "field" ? renderField(block.field) : renderTable(block));
   }
-  if (document.blocks.length === 0) form.append(documentNode("p", "這份文件目前沒有可填寫欄位。", "empty-state"));
+  if (document.blocks.length === 0) form.append(documentNode("p", "This document has no fields to fill yet.", "empty-state"));
   article.append(form);
   fillView.append(article);
 }
 
 function renderTable(tableBlock: RenderTableBlock): HTMLElement {
   const section = element("section", "table-block");
-  if (tableBlock.repeat !== undefined) section.append(documentNode("p", "每月重複", "metadata-badge"));
+  if (tableBlock.repeat !== undefined) section.append(documentNode("p", "Repeats monthly", "metadata-badge"));
   if (tableBlock.help !== undefined) section.append(renderHelp(tableBlock.help));
   const scroller = element("div", "table-scroll");
   const table = documentNode("table");
@@ -200,14 +200,14 @@ function renderTable(tableBlock: RenderTableBlock): HTMLElement {
     const tableRow = documentNode("tr");
     for (const cell of row.cells) {
       const tableCell = documentNode("td");
-      tableCell.append(cell.field === null ? documentNode("span", "無效欄位", "invalid-cell") : renderField(cell.field, true));
+      tableCell.append(cell.field === null ? documentNode("span", "Invalid field", "invalid-cell") : renderField(cell.field, true));
       tableRow.append(tableCell);
     }
     body.append(tableRow);
   }
   if (tableBlock.rows.length === 0) {
     const row = documentNode("tr");
-    const cell = documentNode("td", "尚無資料列", "invalid-cell") as HTMLTableCellElement;
+    const cell = documentNode("td", "No data rows yet", "invalid-cell") as HTMLTableCellElement;
     cell.colSpan = Math.max(1, tableBlock.columns.length);
     row.append(cell);
     body.append(row);
@@ -239,13 +239,13 @@ function createFieldControl(field: RenderField, id: string): HTMLInputElement {
   if (field.descriptor.control === "checkbox") control.checked = field.value === true;
   else control.value = field.value === null ? "" : String(field.value);
   if (field.descriptor.control === "day-input") { control.min = "1"; control.max = "31"; }
-  if (field.descriptor.control === "photo-capture") control.placeholder = "圖片路徑";
-  if (field.descriptor.control === "signature-pad") control.placeholder = "簽名資料";
+  if (field.descriptor.control === "photo-capture") control.placeholder = "Image path";
+  if (field.descriptor.control === "signature-pad") control.placeholder = "Signature data";
   if (field.edit === undefined) {
     control.disabled = true;
   } else {
     control.addEventListener("input", () => {
-      const value = control.type === "checkbox" ? (control.checked ? "正常" : "異常") : control.value;
+      const value = control.type === "checkbox" ? (control.checked ? "Yes" : "No") : control.value;
       applyFillEdit({ ...field.edit!, value });
     });
   }
@@ -257,7 +257,7 @@ function applyFillEdit(edit: CupCellEdit): void {
     const snapshot = session.editCell(edit);
     sourceEditor.value = snapshot.source;
     renderDiagnostics(snapshot.diagnostics);
-    renderStatus("填寫值已同步到原始碼", "ok");
+    renderStatus("Filled value synced to source", "ok");
   } catch (error: unknown) {
     showRuntimeError(error);
   }
@@ -266,7 +266,7 @@ function applyFillEdit(edit: CupCellEdit): void {
 function runDesignMutation(action: () => unknown): void {
   try {
     action();
-    renderAll("Schema 已同步到填寫與原始碼模式");
+    renderAll("Schema synced to Fill and Source modes");
   } catch (error: unknown) {
     showRuntimeError(error);
   }
@@ -312,9 +312,9 @@ function renderDiagnostics(diagnostics: readonly Diagnostic[]): void {
   if (diagnostics.length === 0) return;
   const list = documentNode("ul");
   for (const diagnostic of diagnostics) {
-    list.append(documentNode("li", `第 ${diagnostic.source.start.line} 行 · ${diagnostic.code}: ${diagnostic.message}`));
+    list.append(documentNode("li", `Line ${diagnostic.source.start.line} · ${diagnostic.code}: ${diagnostic.message}`));
   }
-  diagnosticsPanel.append(documentNode("strong", "格式診斷"), list);
+  diagnosticsPanel.append(documentNode("strong", "Format diagnostics"), list);
 }
 
 function renderStatus(message: string, tone: "ok" | "error"): void {
@@ -325,8 +325,8 @@ function renderStatus(message: string, tone: "ok" | "error"): void {
 function showRuntimeError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   diagnosticsPanel.hidden = false;
-  diagnosticsPanel.replaceChildren(documentNode("strong", "操作失敗"), documentNode("p", message));
-  renderStatus("無法同步", "error");
+  diagnosticsPanel.replaceChildren(documentNode("strong", "Operation failed"), documentNode("p", message));
+  renderStatus("Unable to sync", "error");
 }
 
 function input(type: string): HTMLInputElement {

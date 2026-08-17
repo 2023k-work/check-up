@@ -1,16 +1,16 @@
 export const defaultSource = `@version(2)
-@title(消防設備月檢表)
-@info(每月確認消防設備狀態)
+@title(Monthly Fire Equipment Inspection)
+@info(Check the condition of fire equipment each month)
 
-| $month(月份)
+| $month(Month)
 | 2026-08
 
 @repeat(month)
-@help(逐欄確認設備狀態)
-| $day(日) | $time(時間) | $check(正常)
-| 1 | 09:00 | 正常
-| 2 | 09:15 | 異常
+@help(Check the condition of each item)
+| $day(Day) | $time(Time) | $check(In good condition)
+| 1 | 09:00 | Yes
+| 2 | 09:15 | No
 
-@help(請記錄異常狀況)
-| $text(備註) | $photo(現場照片) | $signature(檢查人員)
-| 2 樓滅火器壓力偏低 | images/floor-2.png | 王小明`;
+@help(Record any issues)
+| $text(Notes) | $photo(Site photo) | $signature(Inspector)
+| Low pressure in the second-floor fire extinguisher | images/floor-2.png | Alex Chen`;

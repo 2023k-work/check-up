@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,74 +14,74 @@
       <header class="app-header">
         <h1>CheckUp</h1>
         <p>.cup Format v2 editor</p>
-        <nav class="mode-tabs" aria-label="網站導覽">
-          <button type="button" data-view="home">首頁</button>
-          <button type="button" data-view="design">設計</button>
-          <button type="button" data-view="fill">填寫</button>
-          <button type="button" data-view="source">原始碼</button>
+        <nav class="mode-tabs" aria-label="Site navigation">
+          <button type="button" data-view="home">Home</button>
+          <button type="button" data-view="design">Design</button>
+          <button type="button" data-view="fill">Fill</button>
+          <button type="button" data-view="source">Source</button>
         </nav>
       </header>
 
       <main class="editor-shell">
         <div class="workspace-status">
           <span id="mode-description"></span>
-          <output id="status" aria-live="polite">準備中</output>
+          <output id="status" aria-live="polite">Loading</output>
         </div>
         <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
 
-        <section id="home-view" class="mode-view home-view" aria-label="CheckUp 首頁">
+        <section id="home-view" class="mode-view home-view" aria-label="CheckUp home page">
           <div class="home-content">
             <div class="home-hero">
               <p class="home-kicker">Human-readable · AI-friendly · Version-control ready</p>
-              <h2>用純文字定義清楚、可攜的檢查表</h2>
+              <h2>Define clear, portable checklists in plain text</h2>
               <p>
-                CheckUp 是一套以 <code>.cup</code> 為副檔名的輕量格式，讓人、AI
-                與工具都能讀懂同一份檢查表來源。
+                CheckUp is a lightweight <code>.cup</code> format that lets people, AI,
+                and tools understand the same checklist source.
               </p>
               <div class="home-actions">
-                <button type="button" class="primary-action" data-open-view="fill">立即試用</button>
+                <button type="button" class="primary-action" data-open-view="fill">Try it now</button>
                 <a
                   href="https://github.com/2023k-work/check-up"
                   target="_blank"
                   rel="noopener noreferrer"
-                >查看 GitHub</a>
+                >View on GitHub</a>
               </div>
             </div>
 
-            <div class="feature-grid" aria-label="CheckUp 特色">
+            <div class="feature-grid" aria-label="CheckUp features">
               <article>
-                <h3>好讀、好改</h3>
-                <p>UTF-8 純文字格式，適合審閱、比較版本與交給 AI 協作。</p>
+                <h3>Easy to read and edit</h3>
+                <p>UTF-8 plain text makes reviews, version comparisons, and AI collaboration straightforward.</p>
               </article>
               <article>
-                <h3>欄位有語意</h3>
-                <p>日期、勾選、數字、照片與簽名都有明確型別，不只是一格文字。</p>
+                <h3>Semantic fields</h3>
+                <p>Dates, checks, numbers, photos, and signatures have explicit types—not just text cells.</p>
               </article>
               <article>
-                <h3>一份來源</h3>
-                <p>設計、填寫與原始碼模式共用同一份文件，不需來回轉換格式。</p>
+                <h3>One source</h3>
+                <p>Design, Fill, and Source modes share one document, with no format conversion required.</p>
               </article>
             </div>
 
             <div class="home-example">
               <div>
                 <p class="home-kicker">A complete form in a few lines</p>
-                <h3>從簡單語法開始</h3>
-                <p>Parser 將來源轉成結構化文件，Renderer 再產生適合介面的控制項。</p>
+                <h3>Start with simple syntax</h3>
+                <p>The parser turns source into a structured document, and the renderer creates suitable controls.</p>
               </div>
               <pre><code>@version(2)
-@title(設備每日巡檢)
-| $date(日期) | $check(設備正常)
-| 2026-08-17 | 正常</code></pre>
+@title(Daily Equipment Inspection)
+| $date(Date) | $check(Equipment is in good condition)
+| 2026-08-17 | Yes</code></pre>
             </div>
           </div>
         </section>
-        <section id="design-view" class="mode-view" aria-label="設計模式"></section>
-        <section id="fill-view" class="mode-view" aria-label="填寫模式"></section>
-        <section id="source-view" class="mode-view source-view" aria-label="原始碼模式">
+        <section id="design-view" class="mode-view" aria-label="Design mode"></section>
+        <section id="fill-view" class="mode-view" aria-label="Fill mode"></section>
+        <section id="source-view" class="mode-view source-view" aria-label="Source mode">
           <textarea
             id="source-editor"
-            aria-label="CheckUp .cup 原始碼"
+            aria-label="CheckUp .cup source"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"

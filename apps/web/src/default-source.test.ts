@@ -11,7 +11,7 @@ describe("default CheckUp source", () => {
     expect(parsed.diagnostics).toEqual([]);
 
     const rendered = createRenderModel(parsed.document);
-    expect(rendered.title).toBe("消防設備月檢表");
+    expect(rendered.title).toBe("Monthly Fire Equipment Inspection");
     expect(rendered.blocks.some((block) => block.kind === "table" && block.repeat !== undefined)).toBe(true);
     expect(rendered.blocks.some((block) => block.kind === "table" && block.help !== undefined)).toBe(true);
   });

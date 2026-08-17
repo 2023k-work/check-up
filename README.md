@@ -27,14 +27,14 @@ This complete CheckUp Format v2 document describes a daily equipment inspection:
 
 ```cup
 @version(2)
-@title(設備每日巡檢)
-@info(每日開機前完成設備檢查，發現異常時通知主管。)
+@title(Daily Equipment Inspection)
+@info(Complete the equipment inspection before startup and notify a supervisor of any issues.)
 
-| $date(日期) | $time(時間)
-| $check(設備外觀正常) | $check(安全護罩固定)
-| $check(緊急停止按鈕正常) | $number(壓力 MPa)
-| $text(異常說明)
-| $photo(現場照片) | $signature(檢查人員)
+| $date(Date) | $time(Time)
+| $check(Equipment exterior is in good condition) | $check(Safety guard is secure)
+| $check(Emergency stop button works) | $number(Pressure in MPa)
+| $text(Issue details)
+| $photo(Site photo) | $signature(Inspector)
 ```
 
 Save it as `equipment-daily.cup`. A renderer can use the field declarations to produce date and time inputs, checkboxes, a numeric input, text and photo controls, and a signature control.
@@ -49,9 +49,9 @@ Directives begin with `@` and describe the document or the behavior of later con
 
 ```cup
 @version(2)
-@title(每日巡檢)
-@info(每天開機前進行檢查)
-$check(設備正常)
+@title(Daily Inspection)
+@info(Complete the inspection before startup each day)
+$check(Equipment is in good condition)
 ```
 
 `@version(2)` must be the first meaningful construct. Comments and blank lines may appear before it.
@@ -62,9 +62,9 @@ Fields begin with `$`. Each field declares a value schema and carries its own la
 
 ```cup
 @version(2)
-$date(日期)
-$check(設備外觀)
-$text(異常說明)
+$date(Date)
+$check(Equipment exterior)
+$text(Issue details)
 ```
 
 ### Tables
@@ -73,7 +73,7 @@ A line beginning with `|` belongs to a table. Leading `$field(...)` cells declar
 
 ```cup
 @version(2)
-| $date(日期) | $time(時間)
+| $date(Date) | $time(Time)
 | 2026-08-16 | 09:00
 | 2026-08-17 | 09:15
 ```
@@ -84,38 +84,38 @@ CheckUp tables are not Markdown tables. Do not add a `| --- |` separator row or 
 
 1. Create a UTF-8 text file named `first-check.cup`.
 2. Make `@version(2)` its first meaningful construct.
-3. Add a visible document name with `@title(我的第一份檢查表)`.
-4. Explain when to use it with `@info(開始工作前完成檢查)`.
-5. Declare typed table columns such as `$date(日期)`, `$time(時間)`, `$check(工作區域整潔)`, and `$text(備註)`.
+3. Add a visible document name with `@title(My First Checklist)`.
+4. Explain when to use it with `@info(Complete this check before starting work)`.
+5. Declare typed table columns such as `$date(Date)`, `$time(Time)`, `$check(Work area is tidy)`, and `$text(Notes)`.
 6. Add a data row below the declarations; actual values belong in its cells.
 7. Add more data rows with the same number of cells when needed.
-8. Put `@help(請確認通道沒有障礙物)` immediately before the field or table it should explain.
+8. Put `@help(Make sure the walkway is free of obstacles)` immediately before the field or table it should explain.
 
 The result is a complete document:
 
 ```cup
 @version(2)
-@title(我的第一份檢查表)
-@info(開始工作前完成檢查)
+@title(My First Checklist)
+@info(Complete this check before starting work)
 
-@help(請確認通道沒有障礙物)
-| $date(日期) | $time(時間) | $check(逃生通道暢通) | $text(備註)
-| 2026-08-16 | 09:00 | 正常 | 無異常
+@help(Make sure the walkway is free of obstacles)
+| $date(Date) | $time(Time) | $check(Emergency exit is clear) | $text(Notes)
+| 2026-08-16 | 09:00 | Yes | No issues
 ```
 
 9. For a monthly template, declare a month and place `@repeat(month)` before the table to repeat:
 
 ```cup
 @version(2)
-@title(月度檢查表)
+@title(Monthly Checklist)
 
-| $month(月份)
+| $month(Month)
 | 2026-08
 
 @repeat(month)
-| $day(日) | $check(已完成)
-| 1 | 正常
-| 2 | 異常
+| $day(Day) | $check(Completed)
+| 1 | Yes
+| 2 | No
 ```
 
 `@repeat(month)` applies only to the next table. It uses the document's first `$month(...)` field as its month source; it does not repeat standalone fields.
@@ -142,15 +142,15 @@ Format v2 supports these field declarations. Every field takes exactly one non-e
 
 | Field | Use | Example |
 | --- | --- | --- |
-| `$date` | Calendar date | `$date(檢查日期)` |
-| `$month` | Calendar month and the month source for repeat | `$month(巡檢月份)` |
-| `$day` | Day of the month | `$day(日)` |
-| `$time` | Time of day | `$time(檢查時間)` |
-| `$check` | Independent checked state | `$check(護罩固定)` |
-| `$text` | Free text | `$text(異常說明)` |
-| `$number` | Numeric input | `$number(壓力 MPa)` |
-| `$photo` | Photo resource reference | `$photo(現場照片)` |
-| `$signature` | Handwritten-signature image reference | `$signature(檢查人員)` |
+| `$date` | Calendar date | `$date(Inspection Date)` |
+| `$month` | Calendar month and the month source for repeat | `$month(Inspection Month)` |
+| `$day` | Day of the month | `$day(Day)` |
+| `$time` | Time of day | `$time(Inspection Time)` |
+| `$check` | Independent checked state | `$check(Guard is Secure)` |
+| `$text` | Free text | `$text(Issue Details)` |
+| `$number` | Numeric input | `$number(Pressure in MPa)` |
+| `$photo` | Photo resource reference | `$photo(Site Photo)` |
+| `$signature` | Handwritten-signature image reference | `$signature(Inspector)` |
 
 `$photo` and `$signature` refer to resources associated with filled record data. A signature is a handwritten-signature artifact, not cryptographic proof of identity.
 
@@ -169,8 +169,8 @@ For example, this help text and image apply to the following table:
 
 ```cup
 @version(2)
-@help(確認壓力表指針位於綠色區域,images/pressure.png)
-| $number(壓力 MPa) | $check(壓力正常)
+@help(Confirm that the pressure gauge needle is in the green zone,images/pressure.png)
+| $number(Pressure in MPa) | $check(Pressure is normal)
 ```
 
 Help image paths are relative to the `.cup` file, use `/`, and must stay inside the document folder tree. Absolute paths, backslashes, `.` segments, and `..` traversal are invalid.
@@ -183,14 +183,14 @@ Factory inspections can combine measurements, independent checks, evidence, and 
 
 ```cup
 @version(2)
-@title(空壓機每日巡檢)
-@info(開機前檢查；任何不合格項目都應記錄於異常說明。)
+@title(Daily Air Compressor Inspection)
+@info(Inspect before startup; record every failed item in the issue details.)
 
-| $date(日期) | $time(時間) | $text(設備編號)
-| $number(壓力 MPa) | $check(壓力正常)
-| $check(外觀正常) | $check(安全護罩固定)
-| $text(異常說明)
-| $photo(現場照片) | $signature(巡檢人員)
+| $date(Date) | $time(Time) | $text(Equipment ID)
+| $number(Pressure in MPa) | $check(Pressure is normal)
+| $check(Exterior is in good condition) | $check(Safety guard is secure)
+| $text(Issue details)
+| $photo(Site photo) | $signature(Inspector)
 ```
 
 See the more detailed [monthly equipment example](examples/equipment-monthly-v2.cup), which also demonstrates repeat behavior, help images, and escaping.
@@ -199,23 +199,23 @@ See the more detailed [monthly equipment example](examples/equipment-monthly-v2.
 
 ```cup
 @version(2)
-@title(旅行前確認)
-@info(離家前逐項確認)
+@title(Pre-Travel Checklist)
+@info(Check each item before leaving home)
 
-| $check(證件) | $check(車票)
-| $check(充電器) | $check(藥品)
-| $text(補充事項)
+| $check(Identification) | $check(Tickets)
+| $check(Charger) | $check(Medication)
+| $text(Additional items)
 ```
 
 ### Approval and record
 
 ```cup
 @version(2)
-@title(維修完成紀錄)
+@title(Maintenance Completion Record)
 
-| $date(完成日期) | $text(工單編號)
-| $text(處理摘要)
-| $photo(完成照片) | $signature(確認人員)
+| $date(Completion Date) | $text(Work Order ID)
+| $text(Work Summary)
+| $photo(Completion Photo) | $signature(Approver)
 ```
 
 ## Design principles
@@ -244,7 +244,7 @@ Backslash (`\`) escapes exactly one following structural character. Format v2 de
 | `\|` | `|` |
 | `\\` | `\` |
 
-Escapes are processed before arguments or table cells are split. For example, `$text(區域 A\|B)` has one label containing a literal `|`, `$number(壓力\, MPa)` has one label containing a comma, and a data cell written as `A\|B` stores the value `A|B`. Other sequences such as `\n`, `\t`, and `\uXXXX` are not supported escapes.
+Escapes are processed before arguments or table cells are split. For example, `$text(Area A\|B)` has one label containing a literal `|`, `$number(Pressure\, MPa)` has one label containing a comma, and a data cell written as `A\|B` stores the value `A|B`. Other sequences such as `\n`, `\t`, and `\uXXXX` are not supported escapes.
 
 ## Architecture
 
