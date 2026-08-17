@@ -13,12 +13,15 @@ import "./styles.css";
 const editableFieldTypes: readonly EditableFieldType[] = [
   "date", "month", "day", "time", "check", "text", "number", "photo", "signature",
 ];
-const modeDescriptions: Record<EditorMode, string> = {
+type AppView = "home" | EditorMode;
+const modeDescriptions: Record<AppView, string> = {
+  home: "認識 CheckUp 與 .cup 格式",
   design: "設計 Schema、欄位順序與 table directives",
   fill: "填寫資料列；欄位宣告保持鎖定",
   source: "完整 .cup source；進階模式",
 };
 
+const homeView = requireElement<HTMLElement>("#home-view");
 const designView = requireElement<HTMLElement>("#design-view");
 const fillView = requireElement<HTMLElement>("#fill-view");
 const sourceView = requireElement<HTMLElement>("#source-view");
@@ -26,17 +29,20 @@ const sourceEditor = requireElement<HTMLTextAreaElement>("#source-editor");
 const diagnosticsPanel = requireElement<HTMLElement>("#diagnostics");
 const status = requireElement<HTMLOutputElement>("#status");
 const modeDescription = requireElement<HTMLElement>("#mode-description");
-const modeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-mode]")];
+const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
 const session = new DocumentSession(defaultSource);
+let activeView: AppView = "home";
 
 sourceEditor.value = session.snapshot.source;
-for (const button of modeButtons) {
-  const mode = button.dataset.mode as EditorMode;
-  button.hidden = !session.permissions[mode];
+for (const button of viewButtons) {
+  const view = button.dataset.view as AppView;
+  if (view !== "home") button.hidden = !session.permissions[view];
   button.addEventListener("click", () => {
-    session.setMode(mode);
-    renderAll("模式已切換");
+    openView(view);
   });
+}
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-view]")) {
+  button.addEventListener("click", () => openView(button.dataset.openView as AppView));
 }
 sourceEditor.addEventListener("input", () => {
   const snapshot = session.setSource(sourceEditor.value);
@@ -48,19 +54,26 @@ sourceEditor.addEventListener("input", () => {
   }
 });
 
-renderAll("已載入，預設進入填寫模式");
+renderAll("歡迎使用 CheckUp");
+
+function openView(view: AppView): void {
+  if (view !== "home") session.setMode(view);
+  activeView = view;
+  renderAll(view === "home" ? "已回到首頁" : "模式已切換");
+}
 
 function renderAll(message: string): void {
   const snapshot = session.snapshot;
-  for (const button of modeButtons) {
-    const mode = button.dataset.mode as EditorMode;
-    button.classList.toggle("is-active", mode === snapshot.mode);
-    button.setAttribute("aria-pressed", String(mode === snapshot.mode));
+  for (const button of viewButtons) {
+    const view = button.dataset.view as AppView;
+    button.classList.toggle("is-active", view === activeView);
+    button.setAttribute("aria-pressed", String(view === activeView));
   }
-  designView.hidden = snapshot.mode !== "design";
-  fillView.hidden = snapshot.mode !== "fill";
-  sourceView.hidden = snapshot.mode !== "source";
-  modeDescription.textContent = modeDescriptions[snapshot.mode];
+  homeView.hidden = activeView !== "home";
+  designView.hidden = activeView !== "design";
+  fillView.hidden = activeView !== "fill";
+  sourceView.hidden = activeView !== "source";
+  modeDescription.textContent = modeDescriptions[activeView];
   if (sourceEditor.value !== snapshot.source) sourceEditor.value = snapshot.source;
   renderDiagnostics(snapshot.diagnostics);
   renderDesign();

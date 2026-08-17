@@ -9,9 +9,12 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, textarea, select { font: inherit; }
+#app { display: flex; height: 100vh; flex-direction: column; overflow: hidden; }
+a { color: inherit; }
 
 .app-header {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.8rem;
   min-height: 4.25rem;
@@ -38,7 +41,7 @@ button, input, textarea, select { font: inherit; }
 }
 .mode-tabs button.is-active { color: #183b2c; background: #ddef9d; border-color: #f4ffd2; }
 
-.editor-shell { position: relative; height: calc(100vh - 4.25rem); overflow: hidden; background: #f8f9f5; }
+.editor-shell { position: relative; min-height: 0; flex: 1; overflow: hidden; background: #f8f9f5; }
 .workspace-status {
   display: flex;
   align-items: center;
@@ -54,6 +57,46 @@ button, input, textarea, select { font: inherit; }
 .status-error { color: #b33030; }
 .mode-view { height: calc(100% - 3rem); overflow: auto; padding: clamp(1rem, 3vw, 2.5rem); }
 .source-view { padding: 0; background: #202923; }
+
+.home-view { background: #f3f5ef; }
+.home-content { max-width: 70rem; margin-inline: auto; }
+.home-hero {
+  padding: clamp(2.5rem, 7vw, 5.5rem) clamp(1.25rem, 5vw, 4.5rem);
+  color: #f8fbf5;
+  background: linear-gradient(135deg, #183b2c, #315d43 68%, #477a59);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 3rem rgb(24 59 44 / 16%);
+}
+.home-kicker { margin: 0 0 0.8rem; color: #ddef9d; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.home-hero h2 { max-width: 13ch; margin: 0; font-size: clamp(2.1rem, 6vw, 4.25rem); line-height: 1.03; letter-spacing: -0.055em; }
+.home-hero > p:not(.home-kicker) { max-width: 42rem; margin: 1.25rem 0 0; color: #dbe7df; font-size: clamp(1rem, 2vw, 1.2rem); line-height: 1.75; }
+.home-hero code { padding: 0.1em 0.35em; color: #f4ffd2; background: rgb(0 0 0 / 18%); border-radius: 0.25rem; }
+.home-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.75rem; }
+.home-actions button, .home-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid #a7c1b2;
+  border-radius: 0.45rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.home-actions .primary-action { color: #183b2c; background: #ddef9d; border-color: #ddef9d; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+.feature-grid article, .home-example { padding: 1.4rem; background: #fff; border: 1px solid #d7ddd5; border-radius: 0.75rem; }
+.feature-grid h3, .feature-grid p, .home-example h3, .home-example p { margin: 0; }
+.feature-grid h3, .home-example h3 { color: #183b2c; }
+.feature-grid p, .home-example p:not(.home-kicker) { margin-top: 0.55rem; color: #657068; font-size: 0.88rem; line-height: 1.65; }
+.home-example { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(22rem, 1.2fr); align-items: center; gap: 2rem; margin-top: 1rem; }
+.home-example .home-kicker { color: #477a59; }
+.home-example pre { overflow-x: auto; margin: 0; padding: 1.25rem; color: #e4eee7; background: #202923; border-radius: 0.55rem; font-size: 0.82rem; line-height: 1.7; }
+
+.app-footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 1rem; min-height: 2.75rem; padding: 0.65rem 1.5rem; color: #657068; background: #eef1eb; border-top: 1px solid #d7ddd5; font-size: 0.75rem; }
+.app-footer a { color: #315d43; font-weight: 800; text-decoration: none; }
+.app-footer a:hover { text-decoration: underline; }
 
 #source-editor {
   width: 100%;
@@ -181,7 +224,12 @@ td { min-width: 9rem; padding: 0.75rem; vertical-align: top; border: 1px solid #
   .app-header p { display: none; }
   .mode-tabs { width: 100%; order: 2; }
   .mode-tabs button { flex: 1; }
-  .editor-shell { height: calc(100vh - 7rem); }
+  .home-view { padding-inline: 1rem; }
+  .home-hero { border-radius: 0.75rem; }
+  .feature-grid, .home-example { grid-template-columns: 1fr; }
+  .home-example { gap: 1rem; }
+  .home-example pre { font-size: 0.72rem; }
   .column-editor, .add-column { align-items: stretch; flex-wrap: wrap; }
   .column-editor input, .add-column input { flex-basis: 45%; }
+  .app-footer { align-items: flex-start; padding-inline: 1rem; }
 }
