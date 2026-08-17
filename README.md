@@ -6,8 +6,6 @@ CheckUp documents are UTF-8 plain-text files with the `.cup` extension. They are
 
 CheckUp is its own format—not a Markdown extension.
 
-Try the [CheckUp Web Editor](https://2023k-work.github.io/check-up/) or continue below for the format overview and Quick Start.
-
 ## Why CheckUp?
 
 Checklists and inspection forms often live in spreadsheets, PDFs, word-processing documents, paper forms, or application-specific systems. Those are useful tools, but the form definition itself is not always easy to edit as plain text, compare in version control, parse programmatically, or exchange between renderers.
