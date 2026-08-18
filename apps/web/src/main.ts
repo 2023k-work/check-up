@@ -7,6 +7,12 @@ import {
 } from "@checkup/renderer";
 import { defaultSource } from "./default-source.js";
 import { DocumentSession, type EditorMode } from "./document-session.js";
+import {
+  explicitSourceFromSearch,
+  readEditorDraft,
+  resolveInitialSource,
+  saveEditorDraft,
+} from "./draft-storage.js";
 import type { EditableFieldType } from "./schema-mutator.js";
 import "./styles.css";
 
@@ -29,8 +35,13 @@ const sourceEditor = requireElement<HTMLTextAreaElement>("#source-editor");
 const diagnosticsPanel = requireElement<HTMLElement>("#diagnostics");
 const status = requireElement<HTMLOutputElement>("#status");
 const modeDescription = requireElement<HTMLElement>("#mode-description");
+const loadExampleButton = requireElement<HTMLButtonElement>("#load-official-example");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
-const session = new DocumentSession(defaultSource);
+const session = new DocumentSession(resolveInitialSource({
+  explicitSource: explicitSourceFromSearch(window.location.search, defaultSource),
+  draftSource: readEditorDraft(),
+  defaultSource,
+}));
 let activeView: AppView = "home";
 
 sourceEditor.value = session.snapshot.source;
@@ -46,12 +57,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-open-vi
 }
 sourceEditor.addEventListener("input", () => {
   const snapshot = session.setSource(sourceEditor.value);
+  saveEditorDraft(snapshot.source);
   renderDiagnostics(snapshot.diagnostics);
   renderStatus(snapshot.success ? "Source synced" : "Source contains format errors", snapshot.success ? "ok" : "error");
   if (snapshot.success) {
     renderDesign();
     renderFill();
   }
+});
+loadExampleButton.addEventListener("click", () => {
+  const snapshot = session.setSource(defaultSource);
+  saveEditorDraft(snapshot.source);
+  renderAll("Official example loaded");
 });
 
 renderAll("Welcome to CheckUp");
@@ -255,6 +272,7 @@ function createFieldControl(field: RenderField, id: string): HTMLInputElement {
 function applyFillEdit(edit: CupCellEdit): void {
   try {
     const snapshot = session.editCell(edit);
+    saveEditorDraft(snapshot.source);
     sourceEditor.value = snapshot.source;
     renderDiagnostics(snapshot.diagnostics);
     renderStatus("Filled value synced to source", "ok");
@@ -266,6 +284,7 @@ function applyFillEdit(edit: CupCellEdit): void {
 function runDesignMutation(action: () => unknown): void {
   try {
     action();
+    saveEditorDraft(session.snapshot.source);
     renderAll("Schema synced to Fill and Source modes");
   } catch (error: unknown) {
     showRuntimeError(error);

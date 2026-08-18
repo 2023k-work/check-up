@@ -57,6 +57,27 @@ a { color: inherit; }
 .status-error { color: #b33030; }
 .mode-view { height: calc(100% - 3rem); overflow: auto; padding: clamp(1rem, 3vw, 2.5rem); }
 .source-view { padding: 0; background: #202923; }
+.source-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  color: #c6d8ce;
+  background: #183b2c;
+  border-bottom: 1px solid #668174;
+  font-size: 0.78rem;
+}
+.source-toolbar button {
+  padding: 0.35rem 0.65rem;
+  color: #183b2c;
+  background: #ddef9d;
+  border: 0;
+  border-radius: 0.35rem;
+  font-weight: 700;
+  cursor: pointer;
+}
 
 .home-view { background: #f3f5ef; }
 .home-content { max-width: 70rem; margin-inline: auto; }
@@ -100,7 +121,7 @@ a { color: inherit; }
 
 #source-editor {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 2.75rem);
   padding: 1.25rem;
   resize: none;
   color: #e4eee7;
