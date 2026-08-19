@@ -14,6 +14,7 @@ import {
   saveEditorDraft,
 } from "./draft-storage.js";
 import type { EditableFieldType } from "./schema-mutator.js";
+import { formatDiagnostic, isEmptySource, runtimeErrorMessage } from "./editor-state.js";
 import "./styles.css";
 
 const editableFieldTypes: readonly EditableFieldType[] = [
@@ -33,9 +34,13 @@ const fillView = requireElement<HTMLElement>("#fill-view");
 const sourceView = requireElement<HTMLElement>("#source-view");
 const sourceEditor = requireElement<HTMLTextAreaElement>("#source-editor");
 const diagnosticsPanel = requireElement<HTMLElement>("#diagnostics");
+const systemErrorPanel = requireElement<HTMLElement>("#system-error");
+const systemErrorMessage = requireElement<HTMLElement>("#system-error-message");
 const status = requireElement<HTMLOutputElement>("#status");
 const modeDescription = requireElement<HTMLElement>("#mode-description");
 const loadExampleButton = requireElement<HTMLButtonElement>("#load-official-example");
+const retryApplicationButton = requireElement<HTMLButtonElement>("#retry-application");
+const recoverExampleButton = requireElement<HTMLButtonElement>("#recover-official-example");
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")];
 const session = new DocumentSession(resolveInitialSource({
   explicitSource: explicitSourceFromSearch(window.location.search, defaultSource),
@@ -65,13 +70,24 @@ sourceEditor.addEventListener("input", () => {
     renderFill();
   }
 });
-loadExampleButton.addEventListener("click", () => {
+loadExampleButton.addEventListener("click", loadOfficialExample);
+retryApplicationButton.addEventListener("click", () => window.location.reload());
+recoverExampleButton.addEventListener("click", loadOfficialExample);
+window.addEventListener("error", (event) => showRuntimeError(event.error));
+window.addEventListener("unhandledrejection", (event) => showRuntimeError(event.reason));
+
+try {
+  renderAll("Welcome to CheckUp");
+} catch (error: unknown) {
+  showRuntimeError(error);
+}
+
+function loadOfficialExample(): void {
   const snapshot = session.setSource(defaultSource);
   saveEditorDraft(snapshot.source);
+  systemErrorPanel.hidden = true;
   renderAll("Official example loaded");
-});
-
-renderAll("Welcome to CheckUp");
+}
 
 function openView(view: AppView): void {
   if (view !== "home") session.setMode(view);
@@ -93,8 +109,14 @@ function renderAll(message: string): void {
   modeDescription.textContent = modeDescriptions[activeView];
   if (sourceEditor.value !== snapshot.source) sourceEditor.value = snapshot.source;
   renderDiagnostics(snapshot.diagnostics);
-  renderDesign();
-  renderFill();
+  try {
+    renderDesign();
+    renderFill();
+    systemErrorPanel.hidden = true;
+  } catch (error: unknown) {
+    showRuntimeError(error);
+    return;
+  }
   renderStatus(message, snapshot.success ? "ok" : "error");
 }
 
@@ -104,8 +126,18 @@ function renderDesign(): void {
   const heading = documentNode("div", undefined, "view-heading");
   heading.append(documentNode("h2", "Form Design"), documentNode("p", "Edit the field schema; data-row values move safely with their fields."));
   designView.append(heading);
+  if (isEmptySource(snapshot.source)) {
+    designView.append(renderEmptyState(
+      "Start a new checklist",
+      "Load the official example, or open Source mode and write your first .cup field.",
+    ));
+    return;
+  }
   if (!snapshot.success) {
-    designView.append(documentNode("p", "Fix the format errors in Source mode first.", "empty-state"));
+    designView.append(renderRecoveryState(
+      "The source has format errors",
+      "Open Source mode to fix the locations listed in the diagnostics. Your text and saved draft are preserved.",
+    ));
     return;
   }
 
@@ -180,8 +212,18 @@ function renderDesign(): void {
 function renderFill(): void {
   const snapshot = session.snapshot;
   fillView.replaceChildren();
+  if (isEmptySource(snapshot.source)) {
+    fillView.append(renderEmptyState(
+      "There is nothing to fill yet",
+      "Load the official example to explore CheckUp, or start a document in Source mode.",
+    ));
+    return;
+  }
   if (!snapshot.success) {
-    fillView.append(documentNode("p", "Fix the source errors before filling this document.", "empty-state"));
+    fillView.append(renderRecoveryState(
+      "Preview unavailable because the source is invalid",
+      "Fix the reported syntax locations in Source mode. The current source remains untouched.",
+    ));
     return;
   }
   const document = createRenderModel(snapshot.document);
@@ -331,7 +373,7 @@ function renderDiagnostics(diagnostics: readonly Diagnostic[]): void {
   if (diagnostics.length === 0) return;
   const list = documentNode("ul");
   for (const diagnostic of diagnostics) {
-    list.append(documentNode("li", `Line ${diagnostic.source.start.line} · ${diagnostic.code}: ${diagnostic.message}`));
+    list.append(documentNode("li", formatDiagnostic(diagnostic)));
   }
   diagnosticsPanel.append(documentNode("strong", "Format diagnostics"), list);
 }
@@ -342,10 +384,36 @@ function renderStatus(message: string, tone: "ok" | "error"): void {
 }
 
 function showRuntimeError(error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error);
-  diagnosticsPanel.hidden = false;
-  diagnosticsPanel.replaceChildren(documentNode("strong", "Operation failed"), documentNode("p", message));
-  renderStatus("Unable to sync", "error");
+  systemErrorMessage.textContent = runtimeErrorMessage(error);
+  systemErrorPanel.hidden = false;
+  renderStatus("Application error — draft preserved", "error");
+}
+
+function renderEmptyState(title: string, description: string): HTMLElement {
+  return renderActionState("Empty document", title, description);
+}
+
+function renderRecoveryState(title: string, description: string): HTMLElement {
+  return renderActionState("Format error", title, description);
+}
+
+function renderActionState(kicker: string, title: string, description: string): HTMLElement {
+  const state = element("section", "action-state");
+  state.append(
+    documentNode("p", kicker, "state-kicker"),
+    documentNode("h2", title),
+    documentNode("p", description),
+  );
+  const actions = element("div", "state-actions");
+  const sourceButton = documentNode("button", "Open Source mode") as HTMLButtonElement;
+  sourceButton.type = "button";
+  sourceButton.addEventListener("click", () => openView("source"));
+  const exampleButton = documentNode("button", "Load official example") as HTMLButtonElement;
+  exampleButton.type = "button";
+  exampleButton.addEventListener("click", loadOfficialExample);
+  actions.append(sourceButton, exampleButton);
+  state.append(actions);
+  return state;
 }
 
 function input(type: string): HTMLInputElement {

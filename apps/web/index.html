@@ -28,6 +28,16 @@
           <output id="status" aria-live="polite">Loading</output>
         </div>
         <div id="diagnostics" class="diagnostics" aria-live="polite" hidden></div>
+        <section id="system-error" class="system-error" role="alert" hidden>
+          <p class="state-kicker">Application error</p>
+          <h2>CheckUp could not finish loading this view</h2>
+          <p id="system-error-message">An unexpected application error occurred.</p>
+          <div class="state-actions">
+            <button id="retry-application" type="button">Reload application</button>
+            <button id="recover-official-example" type="button">Load official example</button>
+          </div>
+          <p class="state-note">Your current browser draft is not deleted.</p>
+        </section>
 
         <section id="home-view" class="mode-view home-view" aria-label="CheckUp home page">
           <div class="home-content">
@@ -103,6 +113,32 @@
       </footer>
     </div>
 
+    <script>
+      (() => {
+        const showStartupError = (reason) => {
+          const panel = document.querySelector("#system-error");
+          const message = document.querySelector("#system-error-message");
+          if (!(panel instanceof HTMLElement) || !(message instanceof HTMLElement)) return;
+          message.textContent = reason instanceof Error ? reason.message : "An unexpected application error occurred.";
+          panel.hidden = false;
+          const retry = document.querySelector("#retry-application");
+          const recover = document.querySelector("#recover-official-example");
+          if (retry instanceof HTMLButtonElement && retry.onclick === null) {
+            retry.onclick = () => window.location.reload();
+          }
+          if (recover instanceof HTMLButtonElement && recover.onclick === null) {
+            recover.onclick = () => {
+              const url = new URL(window.location.href);
+              url.searchParams.delete("source");
+              url.searchParams.set("example", "official");
+              window.location.assign(url);
+            };
+          }
+        };
+        window.addEventListener("error", (event) => showStartupError(event.error));
+        window.addEventListener("unhandledrejection", (event) => showStartupError(event.reason));
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

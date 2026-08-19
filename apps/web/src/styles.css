@@ -152,6 +152,33 @@ a { color: inherit; }
 .diagnostics ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
 .diagnostics li + li { margin-top: 0.3rem; }
 
+.system-error, .action-state {
+  max-width: 42rem;
+  margin: clamp(1rem, 5vw, 4rem) auto;
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+  background: #fff;
+  border: 1px solid #d7ddd5;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.8rem 2.5rem rgb(37 56 45 / 8%);
+}
+.system-error { position: relative; z-index: 10; border-color: #efc2ba; }
+.system-error h2, .system-error p, .action-state h2, .action-state p { margin: 0; }
+.system-error h2, .action-state h2 { margin-top: 0.35rem; color: #183b2c; }
+.system-error > p:not(.state-kicker), .action-state > p:not(.state-kicker) { margin-top: 0.65rem; color: #657068; line-height: 1.55; }
+.state-kicker { color: #8b3333; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.state-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.15rem; }
+.state-actions button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.75rem;
+  color: #183b2c;
+  background: #eef6da;
+  border: 1px solid #b9cb90;
+  border-radius: 0.4rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.state-note { font-size: 0.78rem; }
+
 .view-heading, .design-card, .render-document { max-width: 64rem; margin-inline: auto; }
 .view-heading h2, .view-heading p, .design-card h3 { margin: 0; }
 .view-heading p { margin-top: 0.35rem; color: #657068; font-size: 0.82rem; }

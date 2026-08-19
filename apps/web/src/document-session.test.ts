@@ -59,4 +59,15 @@ describe("DocumentSession", () => {
     expect(session.snapshot.mode).toBe("fill");
     expect(() => session.setMode("design")).toThrow("not permitted");
   });
+
+  it("keeps invalid source verbatim so parser errors are recoverable", () => {
+    const session = new DocumentSession(source);
+    const invalid = "@version(2)\n| $text(Unclosed label";
+
+    const snapshot = session.setSource(invalid);
+
+    expect(snapshot.success).toBe(false);
+    expect(snapshot.source).toBe(invalid);
+    expect(snapshot.diagnostics.length).toBeGreaterThan(0);
+  });
 });
