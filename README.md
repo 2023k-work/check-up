@@ -1,12 +1,48 @@
 # CheckUp
 
-**A simple, human-readable format for checklists, inspection forms, and structured records.**
+![CheckUp website showing the product introduction and Web Editor navigation](docs/assets/checkup-readme-hero.png)
 
-CheckUp documents are UTF-8 plain-text files with the `.cup` extension. They are easy to write, review, parse, render as interactive forms, and keep in version control. The format is independent of any particular editor or renderer.
+**CheckUp is a human-readable, AI-friendly checklist and inspection form format designed for field inspections, recurring checklists, and structured records.**
 
-CheckUp is its own format—not a Markdown extension.
+CheckUp documents are UTF-8 plain-text files with the `.cup` extension. People and AI tools can write them, Git can review them, and applications can parse them into interactive forms. CheckUp is its own format—not a Markdown extension—and is independent of any particular editor or renderer.
 
-**[Open the CheckUp website and Web Editor](https://2023k-work.github.io/check-up/)** · [Browse the source on GitHub](https://github.com/2023k-work/check-up)
+## A minimal `.cup` file
+
+```cup
+@version(2)
+@title(Daily Safety Check)
+
+| $date(Date) | $check(Safety guard is secure) | $text(Notes)
+```
+
+Save this as `daily-safety-check.cup`, then open it in the Web Editor or pass its source to the parser and renderer.
+
+**[Open the Web Editor / live demo](https://2023k-work.github.io/check-up/)** · [View a complete monthly inspection example](examples/equipment-monthly-v2.cup)
+
+```typescript
+import { parseCup } from "@checkup/parser";
+import { createRenderModel } from "@checkup/renderer";
+
+const source = `@version(2)
+@title(Daily Safety Check)
+
+| $date(Date) | $check(Safety guard is secure) | $text(Notes)`;
+const result = parseCup(source);
+const renderDocument = createRenderModel(result.document);
+```
+
+The parser is fault-tolerant and returns a partial document alongside diagnostics. Check `result.success` before treating a document as valid.
+
+## Start here
+
+- [Why CheckUp?](#why-checkup)
+- [Use cases](#who-is-checkup-for)
+- [Format v2 specification](https://app.notion.com/p/3b74b96f85258184848fcb7387138df1)
+- [Syntax reference](#syntax-reference)
+- [Examples](#real-world-examples)
+- [`@checkup/parser`](src/index.ts)
+- [`@checkup/renderer`](packages/renderer/src/index.ts)
+- [Web Editor / demo](https://2023k-work.github.io/check-up/)
 
 ## Why CheckUp?
 
@@ -21,25 +57,14 @@ CheckUp makes that definition a small, portable text document:
 
 See [Why CheckUp—and when to use it](docs/why-checkup.md) for selection criteria, limitations, and a balanced comparison with spreadsheets, CSV, JSON, YAML, Markdown, and XLSForm.
 
-## Quick example
+## Who is CheckUp for?
 
-This complete CheckUp Format v2 document describes a daily equipment inspection:
+- Field teams that need portable inspection forms without locking the definition into one vendor.
+- Operations and safety teams maintaining recurring checklists as reviewable text.
+- Developers building custom checklist editors, renderers, or record workflows.
+- AI-assisted workflows that need an explicit, compact format instead of guessing structure from prose.
 
-```cup
-@version(2)
-@title(Daily Equipment Inspection)
-@info(Complete the equipment inspection before startup and notify a supervisor of any issues.)
-
-| $date(Date) | $time(Time)
-| $check(Equipment exterior is in good condition) | $check(Safety guard is secure)
-| $check(Emergency stop button works) | $number(Pressure in MPa)
-| $text(Issue details)
-| $photo(Site photo) | $signature(Inspector)
-```
-
-Save it as `equipment-daily.cup`. A renderer can use the field declarations to produce date and time inputs, checkboxes, a numeric input, text and photo controls, and a signature control.
-
-## How it works
+## Syntax reference
 
 CheckUp source has three visible structural ideas.
 
@@ -120,21 +145,7 @@ The result is a complete document:
 
 `@repeat(month)` applies only to the next table. It uses the document's first `$month(...)` field as its month source; it does not repeat standalone fields.
 
-10. Pass the source to a CheckUp parser, then pass the parsed `CupDocument` to a renderer:
-
-```typescript
-import { parseCup } from "@checkup/parser";
-import { createRenderModel } from "@checkup/renderer";
-
-const result = parseCup(source);
-if (!result.success) {
-  console.error(result.diagnostics);
-}
-
-const renderDocument = createRenderModel(result.document);
-```
-
-The parser is fault-tolerant and returns a partial document alongside diagnostics. Applications should check `result.success` before treating a document as valid.
+10. Pass the source to `@checkup/parser`, then pass the resulting `CupDocument` to `@checkup/renderer`. See the runnable TypeScript example at the top of this README.
 
 ## Common fields
 
@@ -319,7 +330,7 @@ Issues and pull requests are welcome. Useful contributions include parser and re
 
 ## Specification
 
-The [CheckUp Format v2 specification](CHECKUP_FORMAT_V2.md) is the normative reference for syntax, validation, resource paths, canonicalization, and hashing. This README is an introduction, not the language specification.
+The current [CheckUp Format v2 rules](https://app.notion.com/p/3b74b96f85258184848fcb7387138df1) are the project reference for syntax and behavior. The concise [syntax reference](#syntax-reference) in this README covers the public constructs needed to start writing `.cup` files.
 
 ## License
 
